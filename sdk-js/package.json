@@ -1,17 +1,37 @@
 {
   "name": "@portix/sdk",
   "version": "0.1.0",
-  "private": true,
+  "description": "JavaScript/TypeScript SDK for printing from a web app to the local Portix Runtime.",
+  "license": "MIT",
+  "keywords": [
+    "printing",
+    "thermal-printer",
+    "escpos",
+    "pos",
+    "receipt-printer",
+    "hardware"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/portixhq/portixone.git",
+    "directory": "sdk-js"
+  },
+  "homepage": "https://github.com/portixhq/portixone/tree/master/sdk-js#readme",
+  "bugs": "https://github.com/portixhq/portixone/issues",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "prepublishOnly": "npm run build"
   },
   "dependencies": {
-    "@portixone/protocol": "*",
-    "@portixone/shared": "*"
+    "@portixone/protocol": "^0.1.0",
+    "@portixone/shared": "^0.1.0"
   },
   "devDependencies": {
     "typescript": "^5.5.0"

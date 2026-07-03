@@ -1,5 +1,7 @@
 # @portixone/protocol
 
-Fuente de verdad del contrato de mensajes entre el Portix Runtime y los SDKs (`PrintJob`, `Capability`, eventos WebSocket). Consumido hoy por `runtime` y `sdk-js`.
+Source of truth for the message contract between the Portix Runtime and its SDKs (`PrintJob`, `Capability`, WebSocket events). Consumed today by `runtime` and [`@portix/sdk`](https://www.npmjs.com/package/@portix/sdk).
 
-Cuando existan SDKs no-JS (`sdk-dotnet`, `sdk-python`, `sdk-go`), este paquete es candidato a convertirse en una spec (JSON Schema / OpenAPI) desde la que generar los tipos en cada lenguaje, en vez de mantenerse como TypeScript puro.
+Once non-JS SDKs exist (`sdk-dotnet`, `sdk-python`, `sdk-go`), this package is a candidate to become a spec (JSON Schema / OpenAPI) that generates types per language, instead of staying pure TypeScript.
+
+This is an internal dependency of `@portix/sdk` and the runtime — most developers won't import it directly.

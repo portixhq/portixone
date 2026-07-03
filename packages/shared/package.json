@@ -1,13 +1,25 @@
 {
   "name": "@portixone/shared",
   "version": "0.1.0",
-  "private": true,
+  "description": "Shared constants and error types used by the PortixOne runtime and SDKs.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/portixhq/portixone.git",
+    "directory": "packages/shared"
+  },
+  "homepage": "https://github.com/portixhq/portixone/tree/master/packages/shared#readme",
+  "bugs": "https://github.com/portixhq/portixone/issues",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "prepublishOnly": "npm run build"
   },
   "devDependencies": {
     "typescript": "^5.5.0"
