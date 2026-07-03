@@ -32,10 +32,7 @@ Windows Spooler
 Thermal Printer
 ```
 
-<!-- TODO: replace with the real photo of the first printed receipt, e.g. docs/assets/first-physical-print.jpg -->
-![First physical print — a real receipt printed end-to-end through PortixOne](docs/assets/first-physical-print.jpg)
-
-Evidence, not decoration. See [CHANGELOG.md](CHANGELOG.md) for what shipped and [ROADMAP.md](ROADMAP.md) for what's next.
+See [CHANGELOG.md](CHANGELOG.md) for what shipped and [ROADMAP.md](ROADMAP.md) for what's next.
 
 ## Quickstart
 
