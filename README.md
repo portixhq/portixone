@@ -49,3 +49,16 @@ npm run typecheck
 ```
 
 Luego abre [`examples/quickstart-html/index.html`](examples/quickstart-html/index.html) para probar el flujo de impresión de extremo a extremo.
+
+## Red de repositorios PortixOne
+
+Este monorepo es la fuente de verdad para desarrollo. El resto de la red de conocimiento vive en repos separados, cada uno resolviendo una intención de búsqueda distinta:
+
+| Repo | Qué es |
+|---|---|
+| [`portix-runtime`](https://github.com/PortixOne/portix-runtime) | Mirror público de solo lectura del runtime (`runtime/` aquí) |
+| [`portix-sdk-js`](https://github.com/PortixOne/portix-sdk-js) | Mirror público de solo lectura del SDK JS (`sdk-js/` aquí) |
+| [`awesome-web-printing`](https://github.com/PortixOne/awesome-web-printing) | Lista curada del ecosistema de impresión web |
+| [`browser-printing-examples`](https://github.com/PortixOne/browser-printing-examples) | Ejemplos ejecutables por framework (vanilla, React, Vue) |
+| [`escpos-cheatsheet`](https://github.com/PortixOne/escpos-cheatsheet) | Referencia rápida de comandos ESC/POS |
+| [`thermal-printer-test-files`](https://github.com/PortixOne/thermal-printer-test-files) | Archivos `.bin` ESC/POS reales para probar impresoras/parsers |
