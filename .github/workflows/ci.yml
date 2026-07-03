@@ -19,5 +19,8 @@ jobs:
 
       - run: npm ci
       - run: npm run lint
-      - run: npm run typecheck
+      # build before typecheck: runtime/sdk-js import @portixone/* packages
+      # via their published dist/*.d.ts, which only exist after building
+      # packages/* first (no TS project references yet).
       - run: npm run build
+      - run: npm run typecheck
