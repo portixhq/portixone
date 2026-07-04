@@ -17,9 +17,14 @@ Guiding question: *"Can a complete stranger successfully use PortixOne without a
 
 - [x] **2.1 — Publish the SDK**: `@portixone/sdk` (with `@portixone/protocol` and `@portixone/shared`) live on npm. Verified with a real `npm install @portixone/sdk` from a clean directory, outside the monorepo, against the public registry
 - [ ] **2.2 — Official Runtime Installer**: download → install → start runtime → `npm install @portixone/sdk` → `new Portix()` → `connect()` → `print()`, no manual configuration
+  - [x] Windows Service (`runtime/scripts/service.install.js`, via `node-windows` — no native deps). Installed and verified for real: `/health` responded, a `/print` job was accepted while running as `LocalSystem` (physical output pending a printer being reconnected)
+  - [x] Tray app (`tray/`) — lightweight, no Electron (`systray2`). Verified running with a live status icon and working menu (Open logs / Restart service / Quit)
+  - [ ] Installer (`installer/portixone.iss`, Inno Setup) — staging script verified (both apps boot standalone from the staged, production-only copy), but the `.iss` itself is unopened/uncompiled — Inno Setup isn't installed on this machine yet
+  - [ ] Bundle a self-contained Node runtime so Node.js isn't a prerequisite (currently the installer checks for it and fails with a message)
 - [x] **2.3 — Mock mode**: `new Portix({ mode: "mock" })` renders a receipt preview instead of printing — zero hardware requirement, better tutorials/CI/first experience. Switching to production is only `mode: "runtime"`. `sdk-js@0.2.0` published; verified with a real `npm install` + `npm start` in `examples/basic-print` against the public registry
 - [ ] **2.4 — Measure TTFP** (Time To First Print: from opening the docs to the first successful print). Good: < 5 min. Excellent: < 2 min. Measure continuously
 - [ ] **2.5 — External developer validation**: 5 external developers (React, Next.js, Vue, Electron, Node.js), documenting install problems, doc gaps, confusing APIs, runtime issues, error messages, missing examples. Fix every issue before adding major new features
+- [ ] **2.6 — Auto-update and release system**: the installer/service update themselves without a manual reinstall. Depends on 2.2's installer actually shipping first
 
 ### Not yet (delayed until Developer Zero is validated)
 

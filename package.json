@@ -6,7 +6,8 @@
   "workspaces": [
     "packages/*",
     "runtime",
-    "sdk-js"
+    "sdk-js",
+    "tray"
   ],
   "scripts": {
     "dev": "npm -w runtime run dev",

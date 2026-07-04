@@ -2,6 +2,9 @@ node_modules/
 dist/
 build/
 .data/
+runtime/scripts/daemon/
+installer/staging/
+installer/dist/
 *.log
 .env
 .env.local

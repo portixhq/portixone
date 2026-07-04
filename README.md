@@ -85,7 +85,9 @@ Validated Runtime → Windows Spooler → Thermal Printer, end-to-end, from a re
 
 | Folder | Status | License | Description |
 |---|---|---|---|
-| [`runtime/`](runtime) | Active (MVP) | Open source | Portix Runtime — headless local bridge (HTTP + WebSocket API + printer manager) |
+| [`runtime/`](runtime) | Active (MVP) | Open source | Portix Runtime — headless local bridge (HTTP + WebSocket API + printer manager), installable as a Windows Service |
+| [`tray/`](tray) | Active (MVP) | Open source | Lightweight (no Electron) Windows tray icon showing runtime status |
+| [`installer/`](installer) | Active (WIP) | Open source | Inno Setup installer — Runtime service + tray, not yet compiled/tested |
 | [`sdk-js/`](sdk-js) | Active (MVP) | Open source | JavaScript SDK (`@portixone/sdk`) for calling `print()` from a web app |
 | [`packages/protocol/`](packages/protocol) | Active (MVP) | Open source | Shared message contract between the runtime and SDKs |
 | [`packages/shared/`](packages/shared) | Active (MVP) | Open source | Shared constants and error types |
