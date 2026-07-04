@@ -17,7 +17,7 @@ Guiding question: *"Can a complete stranger successfully use PortixOne without a
 
 - [x] **2.1 — Publish the SDK**: `@portixone/sdk` (with `@portixone/protocol` and `@portixone/shared`) live on npm. Verified with a real `npm install @portixone/sdk` from a clean directory, outside the monorepo, against the public registry
 - [ ] **2.2 — Official Runtime Installer**: download → install → start runtime → `npm install @portixone/sdk` → `new Portix()` → `connect()` → `print()`, no manual configuration
-- [ ] **2.3 — Mock mode**: `new Portix({ mode: "mock" })` renders a receipt preview instead of printing — zero hardware requirement, better tutorials/CI/first experience. Switching to production is only `mode: "runtime"`
+- [ ] **2.3 — Mock mode**: `new Portix({ mode: "mock" })` renders a receipt preview instead of printing — zero hardware requirement, better tutorials/CI/first experience. Switching to production is only `mode: "runtime"`. Implemented and verified locally (`sdk-js@0.2.0`) — pending `npm publish` to actually reach `npm install @portixone/sdk`
 - [ ] **2.4 — Measure TTFP** (Time To First Print: from opening the docs to the first successful print). Good: < 5 min. Excellent: < 2 min. Measure continuously
 - [ ] **2.5 — External developer validation**: 5 external developers (React, Next.js, Vue, Electron, Node.js), documenting install problems, doc gaps, confusing APIs, runtime issues, error messages, missing examples. Fix every issue before adding major new features
 
