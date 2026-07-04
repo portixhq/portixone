@@ -54,6 +54,14 @@ await portix.print({
 
 The printer prints. That's it.
 
+No printer or runtime handy? Add `{ mode: "mock" }` and try the exact same code — no setup at all:
+
+```js
+const portix = new Portix({ mode: "mock" });
+```
+
+`print()` renders a text preview of the receipt instead of sending it anywhere. See [`examples/basic-print`](examples/basic-print) for a runnable, standalone version — just `npm install && npm start`, nothing else.
+
 ### Running this repo locally
 
 ```bash
@@ -82,7 +90,7 @@ Validated Runtime → Windows Spooler → Thermal Printer, end-to-end, from a re
 | [`packages/protocol/`](packages/protocol) | Active (MVP) | Open source | Shared message contract between the runtime and SDKs |
 | [`packages/shared/`](packages/shared) | Active (MVP) | Open source | Shared constants and error types |
 | [`packages/escpos/`](packages/escpos) | Active (MVP) | Open source | ESC/POS command building |
-| [`examples/`](examples) | Active (MVP) | Open source | Minimal HTML demo — Time to First Print |
+| [`examples/`](examples) | Active (MVP) | Open source | Standalone Node.js example (npm-installed) + minimal HTML demo |
 | [`docs/`](docs) | Placeholder | Open source | Quickstart and troubleshooting |
 | [`cli/`](cli) | Planned | Open source | Command-line interface for the runtime |
 | [`sdk-dotnet/`](sdk-dotnet) | Planned | Open source | .NET SDK |
@@ -108,6 +116,12 @@ PortixOne is open-core. Everything a developer needs to run local printing — a
 | **Closed** ([`portixhq/portix-cloud`](https://github.com/portixhq/portix-cloud), private) | Cloud — dashboard, device fleet management, licensing, telemetry, team organizations, managed updates, billing, enterprise sync |
 
 The [`cloud/`](cloud) folder in this repo is a structural placeholder only, so the layered architecture is visible from the root — it contains no proprietary code and never will.
+
+## Try it
+
+`npm install @portixone/sdk` and see for yourself — the [Quickstart](#quickstart) above is the whole thing.
+
+Looking for feedback from developers building POS, kiosk, logistics, or web-to-print tools — [open an issue](https://github.com/portixhq/portixone/issues) with what worked, what didn't, or what's missing.
 
 ## PortixOne repo network
 

@@ -1,0 +1,14 @@
+{
+  "name": "basic-print-example",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Minimal standalone project using the public @portixone/sdk npm package — no monorepo references.",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@portixone/sdk": "^0.2.0"
+  }
+}

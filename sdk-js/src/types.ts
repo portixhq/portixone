@@ -12,4 +12,10 @@ export interface PortixOptions {
   apiKey?: string;
   host?: string;
   port?: number;
+  /**
+   * `"runtime"` (default) talks to a real Portix Runtime. `"mock"` needs no
+   * runtime and no printer at all — `print()` renders a text preview of the
+   * receipt instead, so a stranger can try the SDK in one command.
+   */
+  mode?: 'runtime' | 'mock';
 }
