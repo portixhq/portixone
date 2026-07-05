@@ -2,10 +2,9 @@
 ;
 ; Prerequisite: run `node installer/build-staging.js` from the repo root
 ; first — this script packages installer/staging/, not the source tree.
-;
-; Requires Node.js already installed on the target machine (checked below).
-; Bundling a self-contained Node runtime (e.g. via Node's Single Executable
-; Applications) is a follow-up, not done here — see ROADMAP.md.
+; That step also downloads a pinned, checksum-verified copy of Node.js into
+; staging/node/node.exe, which this installer ships and runs from — the
+; target machine needs no Node.js of its own (see ROADMAP.md Fase 4).
 ;
 ; Compile with Inno Setup 6 (https://jrsoftware.org/isinfo.php):
 ;   ISCC.exe installer\portixone.iss
@@ -50,6 +49,7 @@ FinishedLabel=PortixOne Runtime is ready. Your computer can now receive print jo
 ClickFinish=
 
 [Files]
+Source: "staging\node\*"; DestDir: "{app}\node"; Flags: recursesubdirs ignoreversion
 Source: "staging\runtime\*"; DestDir: "{app}\runtime"; Flags: recursesubdirs ignoreversion
 Source: "staging\tray\*"; DestDir: "{app}\tray"; Flags: recursesubdirs ignoreversion
 Source: "kill-tray.ps1"; DestDir: "{app}"; Flags: ignoreversion
@@ -90,40 +90,16 @@ Type: filesandordirs; Name: "{app}\runtime\scripts\daemon"
 ; empty dir individually.
 Type: filesandordirs; Name: "{app}\runtime"
 Type: filesandordirs; Name: "{app}\tray"
+Type: filesandordirs; Name: "{app}\node"
 Type: dirifempty; Name: "{app}"
 
 [Code]
-var
-  NodePath: string;
-
 function GetNodePath(Param: string): string;
 begin
-  Result := NodePath;
-end;
-
-function InitializeSetup(): Boolean;
-var
-  ResultCode: Integer;
-  RawOutput: AnsiString;
-  LineBreakPos: Integer;
-begin
-  if not Exec('cmd.exe', '/c where node > "' + ExpandConstant('{tmp}') + '\node-where.txt" 2>nul',
-     '', SW_HIDE, ewWaitUntilTerminated, ResultCode) or (ResultCode <> 0) then
-  begin
-    MsgBox('Node.js was not found on this machine (checked via "where node"). ' +
-      'Install Node.js 20 or later from https://nodejs.org first, then run this installer again.',
-      mbCriticalError, MB_OK);
-    Result := False;
-    exit;
-  end;
-
-  LoadStringFromFile(ExpandConstant('{tmp}') + '\node-where.txt', RawOutput);
-  NodePath := Trim(String(RawOutput));
-  // "where node" prints one match per line — only the first one if there are several.
-  LineBreakPos := Pos(#13, NodePath);
-  if LineBreakPos > 0 then
-    NodePath := Copy(NodePath, 1, LineBreakPos - 1);
-  Result := True;
+  // Bundled under {app}\node by build-staging.js — no system Node.js
+  // required (see ROADMAP.md Fase 4). [Files] copies it before [Icons]/
+  // [Run] ever reference this path, so it's always present by then.
+  Result := ExpandConstant('{app}') + '\node\node.exe';
 end;
 
 function PrepareToInstall(var NeedsRestart: Boolean): String;

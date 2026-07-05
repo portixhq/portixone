@@ -1,6 +1,6 @@
 # installer
 
-Builds `PortixOneRuntimeSetup.exe` — installs the Runtime as a Windows Service and the tray app as a Start Menu / Startup shortcut. No Electron, no bundled Node runtime (yet) — the target machine needs Node.js 20+ already installed.
+Builds `PortixOneRuntimeSetup.exe` — installs the Runtime as a Windows Service and the tray app as a Start Menu / Startup shortcut. No Electron. Node.js itself is bundled (see below) — the target machine needs nothing pre-installed.
 
 ## Build
 
@@ -8,7 +8,17 @@ Builds `PortixOneRuntimeSetup.exe` — installs the Runtime as a Windows Service
 node installer/build-staging.js
 ```
 
-Assembles `installer/staging/{runtime,tray}` — each a clean, production-only copy (no TypeScript source, no devDependencies, no workspace symlinks) that runs standalone. Verified: both `staging/runtime` and `staging/tray` boot correctly with only their own `node_modules`, outside the monorepo.
+Assembles `installer/staging/{node,runtime,tray}` — `runtime`/`tray` are clean, production-only copies (no TypeScript source, no devDependencies, no workspace symlinks) that run standalone, and `node/node.exe` is a pinned, checksum-verified Node.js binary downloaded from `nodejs.org` (cached under `installer/.cache/` so repeat builds don't re-download). Verified: both `staging/runtime` and `staging/tray` boot correctly using only `staging/node/node.exe` and their own `node_modules`, outside the monorepo and with no system Node.js involved. `node-windows` defaults its service's `execPath` to `process.execPath`, so registering the service via the bundled `node.exe` makes the Windows Service itself run on that same bundled binary — no code changes needed in `runtime/scripts/service.install.js` for this to work.
+
+To bump the embedded Node version, edit `EMBEDDED_NODE_VERSION` in `build-staging.js` and delete `installer/.cache/` to force a re-download.
+
+## Portable build (no install, no admin)
+
+```bash
+node installer/build-portable.js
+```
+
+Packages the same staged `node`/`runtime`/`tray` into `installer/dist/PortixOneRuntimePortable.zip` — no Inno Setup involved, no Windows Service, no registry changes, no admin rights. Unzip anywhere and run `Start PortixOne.bat`. Verified: the bundled `node.exe` starts the runtime standalone from that folder and `GET /health` responds. Trade-off, by design: it doesn't survive a reboot or run without a logged-in user — use the full `PortixOneRuntimeSetup.exe` when that matters.
 
 Then compile the installer with [Inno Setup 6](https://jrsoftware.org/isinfo.php):
 
@@ -18,7 +28,7 @@ ISCC.exe installer\portixone.iss
 
 Output: `installer\dist\PortixOneRuntimeSetup.exe`.
 
-**Status**: compiled and verified end-to-end, both ways that matter — silently/scripted (see below) and, most importantly, the actual real-user path: double-click the `.exe`, accept the UAC prompt, click through the wizard, land on Finished with the runtime already running and the tray already up. Confirmed working by a human doing exactly that. Not verified: a machine with no Node.js/dev tools, and a real Windows restart — both need a human with a second machine or a reboot they've chosen to do.
+**Status**: compiled and verified end-to-end, both ways that matter — silently/scripted (see below) and, most importantly, the actual real-user path: double-click the `.exe`, accept the UAC prompt, click through the wizard, land on Finished with the runtime already running and the tray already up. Confirmed working by a human doing exactly that. That verification predates the embedded-Node change below — still not verified: a machine with genuinely no Node.js/dev tools installed (this should now pass, but hasn't been confirmed on real hardware), and a real Windows restart — both need a human with a second machine or a reboot they've chosen to do.
 
 One quirk specific to *automated* invocation: running Setup.exe from a scripted/tool-driven process (rather than a normal interactive double-click) can hit `Internal error: CallSpawnServer: Unexpected response: $0` — this is an Inno Setup elevation/IPC issue tied to how the calling process is spawned, not a bug in `portixone.iss`. Confirmed by reproducing it via automation and then having a human double-click the same `.exe` normally, which worked cleanly.
 
@@ -34,11 +44,10 @@ Without them, if the tray happens to be running (reinstalling/upgrading over an 
 
 ## What it does
 
-1. Checks for Node.js on the target machine (fails with a clear message + link to nodejs.org if missing).
-2. Copies the staged runtime + tray into `Program Files\PortixOne`.
-3. Installs the Runtime as a Windows Service (`PortixOne Runtime`, auto-start, runs as `LocalSystem` — works without anyone logged in).
-4. Adds a Start Menu shortcut and a Startup shortcut for the tray app, and launches the tray — unconditionally, not tied to the interactive Finished-page checkbox (see below for why).
-5. Uninstalling kills the tray, removes the service, deletes every installed file (including what the running app generates afterwards — `.data/`, the service's log folder), and removes both shortcuts.
+1. Copies the staged `node`, `runtime`, and `tray` folders into `Program Files\PortixOne` — no Node.js check needed since one is bundled.
+2. Installs the Runtime as a Windows Service (`PortixOne Runtime`, auto-start, runs as `LocalSystem` — works without anyone logged in), using the bundled `node.exe`.
+3. Adds a Start Menu shortcut and a Startup shortcut for the tray app, and launches the tray — unconditionally, not tied to the interactive Finished-page checkbox (see below for why).
+4. Uninstalling kills the tray, removes the service, deletes every installed file (including what the running app generates afterwards — `.data/`, the service's log folder, `node/`), and removes both shortcuts.
 
 ## Verified (`/VERYSILENT` installs on this machine)
 
@@ -57,7 +66,6 @@ Without them, if the tray happens to be running (reinstalling/upgrading over an 
 
 ## Not done yet
 
-- Bundling a self-contained Node runtime (Node SEA or similar), so Node.js isn't a prerequisite.
 - Real icon / visual identity (today's tray icon is a solid-color placeholder — see `tray/scripts/generate-placeholder-icon.js`). Deliberate tech debt until PortixOne has real brand assets.
 - Custom wizard imagery and Finished-page copy beyond the `FinishedLabel` override already in place — same reason, no visual assets yet.
 - Code signing (unsigned installer — triggers SmartScreen warnings; `[Setup]` has a commented-out `SignTool` line ready for when a certificate exists).
