@@ -20,19 +20,12 @@ PortixOne connects browser-based applications to local hardware — printers tod
 
 ## Milestones
 
-✅ **First Physical Print** — 2026-07-03
+- ✅ **First Physical Print** (2026-07-03) — Runtime → Windows Spooler → Thermal Printer, end-to-end, from a real browser tab.
+- ✅ **Milestone 2 — Developer Zero** (2026-07-03) — SDK published on npm, mock mode, a verified end-to-end Windows installer.
+- ✅ **Milestone 3 — Local API, pairing, and persisted queue** (2026-07-05) — per-app pairing, a crash-recoverable job queue, LAN discovery, human-readable hardware errors. Full detail: [MILESTONE_3.md](MILESTONE_3.md).
+- ✅ **Milestone 4 — Productization** (2026-07-05) — a real measurement layer (`GET /metrics`), a stress-tested queue, Node.js embedded in the installer (no more Node.js prerequisite), a portable no-admin build, and `@portixone/sdk@0.3.0`/`protocol@0.2.0`/`shared@0.2.0` republished with the full API. Full detail: [MILESTONE_4.md](MILESTONE_4.md).
 
-```
-Browser
-  ↓
-Runtime
-  ↓
-Windows Spooler
-  ↓
-Thermal Printer
-```
-
-See [CHANGELOG.md](CHANGELOG.md) for what shipped and [ROADMAP.md](ROADMAP.md) for what's next.
+See [CHANGELOG.md](CHANGELOG.md) for the full log and [ROADMAP.md](ROADMAP.md) (now organized as Fase 1–12) for what's next.
 
 ## Quickstart
 
@@ -72,14 +65,6 @@ npm run typecheck
 ```
 
 Then open [`examples/quickstart-html/index.html`](examples/quickstart-html/index.html) to try the end-to-end printing flow above in a browser.
-
-## Engineering Milestones
-
-A running log of what actually shipped and got validated — not a promise, a record.
-
-### 2026-07-03 — ✅ First Physical Print
-
-Validated Runtime → Windows Spooler → Thermal Printer, end-to-end, from a real browser tab against a physical USB thermal printer.
 
 ## Monorepo structure
 
