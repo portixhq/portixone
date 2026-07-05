@@ -1,6 +1,6 @@
 {
   "name": "@portixone/shared",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Shared constants and error types used by the PortixOne runtime and SDKs.",
   "license": "MIT",
   "repository": {
@@ -14,7 +14,8 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [
-    "dist"
+    "dist",
+    "CHANGELOG.md"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",

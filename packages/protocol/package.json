@@ -1,6 +1,6 @@
 {
   "name": "@portixone/protocol",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Message contract (print jobs, capabilities, WebSocket events) shared between the Portix Runtime and its SDKs.",
   "license": "MIT",
   "repository": {
@@ -14,7 +14,8 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [
-    "dist"
+    "dist",
+    "CHANGELOG.md"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
