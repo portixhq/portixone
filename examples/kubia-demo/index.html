@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Kubia — a PortixOne integration demo</title>
+  </head>
+  <body>
+    <h1>Kubia demo</h1>
+    <p>
+      "Kubia" stands in for any SaaS integrating PortixOne. This walks through Milestone 3's actual target
+      flow: register a business → connect a printer (pair) → choose which one → make a sale → print the
+      receipt. Requires the PortixOne Runtime running (<code>npm run dev</code> in <code>runtime/</code>).
+    </p>
+
+    <section id="step-register">
+      <h2>1. Register your business</h2>
+      <label>Business name <input id="businessName" type="text" value="Acme Cafe" /></label>
+      <br />
+      <label>Tenant ID <input id="tenantId" type="text" value="acme-cafe" /></label>
+      <br /><br />
+      <button id="registerBtn">Register &amp; continue</button>
+    </section>
+
+    <section id="step-pair" hidden>
+      <h2>2. Connect a printer</h2>
+      <button id="pairBtn">Connect Printer</button>
+      <p id="pairCode"></p>
+      <p>
+        Approve this from the PortixOne Tray's <strong>Pairing Requests</strong> menu (right-click the tray
+        icon). For scripted testing without the Tray, the Runtime's admin key also works:
+        <code>curl -X POST http://127.0.0.1:17321/pairing/approve -H "Content-Type: application/json" -H "x-portix-api-key: &lt;admin key&gt;" -d "{\"code\":\"...\"}"</code>
+      </p>
+    </section>
+
+    <section id="step-printer" hidden>
+      <h2>3. Choose a printer</h2>
+      <select id="printerSelect"></select>
+      <button id="savePrinterBtn">Save</button>
+    </section>
+
+    <section id="step-sale" hidden>
+      <h2>4. Make a sale</h2>
+      <label>Item <input id="itemName" type="text" value="Cappuccino" /></label>
+      <br />
+      <label>Price <input id="itemPrice" type="text" value="4.50" /></label>
+      <br /><br />
+      <button id="sellBtn">Sell &amp; Print Receipt</button>
+    </section>
+
+    <pre id="log"></pre>
+
+    <!--
+      Plain HTML has no bundler to resolve npm package names, so this import
+      map stands in for one. Points at the monorepo's local build, not the
+      published npm package — pair()/listPrinters()/on() are newer than the
+      last @portixone/sdk publish.
+    -->
+    <script type="importmap">
+      {
+        "imports": {
+          "@portixone/protocol": "../../packages/protocol/dist/index.js",
+          "@portixone/shared": "../../packages/shared/dist/index.js",
+          "zod": "https://esm.sh/zod@3.25.76"
+        }
+      }
+    </script>
+    <script type="module">
+      import { Portix } from '../../sdk-js/dist/index.js';
+
+      const logEl = document.getElementById('log');
+      const log = (label, data) => {
+        logEl.textContent = `${label}\n${JSON.stringify(data, null, 2)}\n\n` + logEl.textContent;
+      };
+      const reveal = (id) => {
+        document.getElementById(id).hidden = false;
+      };
+
+      let portix;
+      let selectedPrinter;
+
+      document.getElementById('registerBtn').addEventListener('click', async () => {
+        const tenant = document.getElementById('tenantId').value;
+        const businessName = document.getElementById('businessName').value;
+        try {
+          portix = new Portix({ appId: 'kubia', tenant });
+          await portix.connect();
+          log('Registered', { businessName, tenant });
+          reveal('step-pair');
+        } catch (error) {
+          log('Registration failed — is the Runtime running?', { message: error.message });
+        }
+      });
+
+      document.getElementById('pairBtn').addEventListener('click', async () => {
+        try {
+          portix.on('paired', async (data) => {
+            log("event 'paired' — approved", data);
+            reveal('step-printer');
+            await loadPrinters();
+          });
+          const { code, expiresAt } = await portix.pair();
+          document.getElementById('pairCode').textContent = `Code: ${code} (expires ${expiresAt})`;
+          log('pair() started — waiting for approval', { code, expiresAt });
+        } catch (error) {
+          log('pair() failed', { message: error.message });
+        }
+      });
+
+      async function loadPrinters() {
+        const printers = await portix.listPrinters();
+        const select = document.getElementById('printerSelect');
+        select.innerHTML = '';
+        for (const printer of printers) {
+          const option = document.createElement('option');
+          option.value = printer.name;
+          option.textContent = `${printer.online ? '●' : '○'} ${printer.name}`;
+          select.appendChild(option);
+        }
+        log('listPrinters()', printers);
+      }
+
+      document.getElementById('savePrinterBtn').addEventListener('click', () => {
+        selectedPrinter = document.getElementById('printerSelect').value;
+        localStorage.setItem('kubia-demo-printer', selectedPrinter ?? '');
+        log('Printer saved', { selectedPrinter });
+        reveal('step-sale');
+      });
+
+      document.getElementById('sellBtn').addEventListener('click', async () => {
+        const item = document.getElementById('itemName').value;
+        const price = document.getElementById('itemPrice').value;
+        const receipt = ['Acme Cafe', '-----------------', `${item}`, `$${price}`, '-----------------', 'Thank you!'].join(
+          '\n',
+        );
+        try {
+          const result = await portix.print({ content: receipt, printerName: selectedPrinter });
+          log('print() result', result);
+        } catch (error) {
+          log('print() failed', { message: error.message });
+        }
+      });
+    </script>
+  </body>
+</html>
