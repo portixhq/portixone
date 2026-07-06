@@ -42,9 +42,9 @@ Errors a human can act on instead of raw exceptions — `ECONNRESET` becomes `Pr
 
 Where Portix.one starts existing as a brand, not just a repo: wordmark, isotype, responsive logo, color palette, typography, iconography, spacing system, UI components, illustrations, motion guidelines, design tokens, brand voice, and the documentation to keep it all consistent across Landing, Docs, Runtime, Dashboard, SDK, GitHub, and social. Deliberately not started before now — branding before the underlying functionality was physically verified would have been solving the wrong problem first.
 
-## FASE 8 — Landing Experience 🔜
+## FASE 8 — Landing Experience 🟡
 
-A landing built to be *used* within minutes, not one built to sell. Full section-by-section spec: [LANDING.md](LANDING.md). Its only objective is minimizing Time To First Print.
+A landing built to be *used* within minutes, not one built to sell. Full section-by-section spec: [LANDING.md](LANDING.md). Its only objective is minimizing Time To First Print. **2026-07-05**: `portix.dev` rebuilt live on `portix.one` — printing-first hero, comparison table, compatibility grid, open source links, docs cards, a public Pricing section, and a qualifying "Join Developer Preview" form (all non-Business CTAs route there instead of open self-serve signup, since Fase 10/11 haven't validated the product with a stranger yet). Honest "Developer Preview" badge instead of overclaiming readiness. What's left: real visual identity once Fase 7 exists — today's version uses the pre-existing placeholder design system, not a finished brand.
 
 ## FASE 9 — Documentation 🔜
 

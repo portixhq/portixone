@@ -132,6 +132,10 @@ Cancels a job that hasn't started printing yet. Throws `JOB_NOT_CANCELLABLE` if 
 
 Starts pairing (see above). Requires `tenant`/`appId` in the constructor options.
 
+### `portix.getMetrics(): Promise<RuntimeMetrics>`
+
+Milestone 4's measurement layer: job counts/durations (`jobs.avgDurationMs`, `jobs.byStatus`), pairing duration (`pairing.avgPairingDurationMs`), and WebSocket disconnects (`websocket.totalDisconnects` — named honestly: it counts disconnects, not successful reconnections, since there's no reconnect-on-drop logic yet). Requires the admin key — not available to a paired app.
+
 ### `portix.on(event, handler): () => void`
 
 Subscribes to real-time events pushed by the runtime — `"status"`, `"job:queued"`, `"job:printing"`, `"job:printed"`, `"job:error"`, `"job:cancelled"` — plus the SDK-local `"paired"` event. Returns an unsubscribe function. Opens a WebSocket to the runtime on first use; needs a browser or Node 22+ (older Node logs a warning and falls back to no live events — poll `getJobs()` there instead).
