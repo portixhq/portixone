@@ -1,6 +1,6 @@
 {
   "name": "@portixone/sdk",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "JavaScript/TypeScript SDK for printing from a web app to the local Portix Runtime.",
   "license": "MIT",
   "keywords": [

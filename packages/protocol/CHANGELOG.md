@@ -1,5 +1,9 @@
 # @portixone/protocol
 
+## 0.2.1
+
+- Added `preview?: string` to `PrintJobResult` — the rendered text preview, present only when a job ran in the SDK's mock mode. Additive, no wire changes for real runtime prints.
+
 ## 0.2.0
 
 **Breaking wire change**, pre-1.0: `JobStatus` values changed shape from `'queued' | 'printed' | 'error'` to `'pending' | 'printing' | 'completed' | 'failed' | 'cancelled'` to match the persisted-queue lifecycle built in Milestone 3. `PROTOCOL_VERSION` was bumped in code to `0.2.0` alongside this change; this release syncs the published package version to match.

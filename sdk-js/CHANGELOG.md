@@ -1,5 +1,10 @@
 # @portixone/sdk
 
+## 0.3.1
+
+- `print()` in mock mode now returns `preview` on the result — the rendered receipt text, not just a console.log side effect. Lets a developer render the mock preview in their own UI instead of only the terminal.
+- Fixed unclear errors when the runtime responds with something other than JSON (an unreachable host hitting a captive portal, a reverse proxy, or an empty body) — `ClientAdapter` now parses defensively and throws a message that says what's actually wrong instead of a raw `JSON.parse` `SyntaxError`.
+
 ## 0.3.0
 
 New methods, matching the runtime's Local API and Milestone 3/4 work — this release is what makes `npm install @portixone/sdk` reflect everything built since `0.2.0`:

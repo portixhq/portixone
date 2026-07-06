@@ -2,6 +2,16 @@
 
 JavaScript SDK for printing from a web app to the local Portix Runtime.
 
+## Compatibility
+
+| Environment | `connect()` / `print()` / etc. | `on()` real-time events |
+|---|---|---|
+| Modern browsers | ✅ | ✅ |
+| Node.js 20+ | ✅ (needs global `fetch` and `crypto.randomUUID`) | ⚠️ Node 22+ only — see below |
+| Node.js < 20 | ❌ Not supported | ❌ Not supported |
+
+`on()` opens a WebSocket to the runtime, which needs a global `WebSocket` — available in every browser and in Node 22+. On Node 20–21, `on()` logs a warning and simply doesn't fire; poll `getJobs()` instead to track job status there.
+
 ## Quickstart
 
 ```bash

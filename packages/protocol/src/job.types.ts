@@ -23,6 +23,8 @@ export interface PrintJobResult {
   jobId: string;
   status: JobStatus;
   message?: string;
+  /** The rendered text preview — only present when the job ran in the SDK's mock mode. */
+  preview?: string;
 }
 
 /** Which paired app a job belongs to — absent means the admin key placed it. */

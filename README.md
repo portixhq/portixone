@@ -1,20 +1,20 @@
 # PortixOne
 
-Local device infrastructure for modern web applications.
+PortixOne lets web apps print to local thermal printers through a small local runtime and a JavaScript SDK. Try it instantly in mock mode, then connect it to real hardware when ready.
 
 ```
-Browser
+Web App
   ↓
-PortixOne Runtime
+Portix SDK
   ↓
-Driver
+Portix Runtime
   ↓
-Hardware
+Thermal Printer
 ```
 
-**One API. Multiple devices. Cross-platform.**
+That's the whole mental model — one API call from your app, one small background process on the machine, real paper out the other end. No browser print dialog, no per-vendor driver integration.
 
-PortixOne connects browser-based applications to local hardware — printers today, cash drawers, barcode scanners, scales, and customer displays next — through a single runtime and a unified capability model (`Print`, `Cut`, `OpenDrawer`, `ReadWeight`, ...), instead of a different integration per device and per OS.
+**One API. Multiple devices. Cross-platform.** Printing is the first driver — the same runtime and capability model (`Print`, `Cut`, `OpenDrawer`, `ReadWeight`, ...) is built to extend to cash drawers, barcode scanners, scales, and customer displays next, instead of a different integration per device and per OS.
 
 **Status**: Experimental (`v0.0.1-alpha`) · **Current scope**: Windows local printing only.
 
@@ -53,7 +53,7 @@ No printer or runtime handy? Add `{ mode: "mock" }` and try the exact same code 
 const portix = new Portix({ mode: "mock" });
 ```
 
-`print()` renders a text preview of the receipt instead of sending it anywhere. See [`examples/basic-print`](examples/basic-print) for a runnable, standalone version — just `npm install && npm start`, nothing else.
+`print()` renders a text preview of the receipt instead of sending it anywhere. See [`examples/basic-print`](examples/basic-print) for a runnable, standalone version — just `npm install && npm start`, nothing else — or [`examples/print-ticket`](examples/print-ticket) for a real, properly formatted restaurant receipt instead of a "Hello World" string.
 
 ### Running this repo locally
 

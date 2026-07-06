@@ -178,11 +178,13 @@ export class Portix {
   }
 
   private mockPrint(job: PrintOptions): PrintResult {
-    console.log(renderMockReceipt(job));
+    const preview = renderMockReceipt(job);
+    console.log(preview);
     return {
       jobId: crypto.randomUUID(),
       status: 'completed',
       message: 'mock mode — no runtime or printer involved',
+      preview,
     };
   }
 

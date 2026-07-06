@@ -90,10 +90,27 @@ export class ClientAdapter {
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
 
-    const responseBody = await response.json();
-    if (!response.ok) {
-      throw new Error(responseBody.message ?? `PortixOne request failed (${response.status})`);
+    // A runtime error is always JSON, but a wrong host/port can just as
+    // easily hit a captive portal, a reverse proxy, or nothing at all —
+    // any of which return HTML or an empty body. Parse defensively so that
+    // case fails with a clear message instead of a raw JSON.parse error.
+    const rawBody = await response.text();
+    let parsedBody: unknown;
+    try {
+      parsedBody = rawBody.length > 0 ? JSON.parse(rawBody) : undefined;
+    } catch {
+      parsedBody = undefined;
     }
-    return responseBody as T;
+
+    if (!response.ok) {
+      const message = (parsedBody as { message?: string } | undefined)?.message;
+      throw new Error(message ?? `PortixOne request failed (${response.status} ${response.statusText})`);
+    }
+    if (parsedBody === undefined) {
+      throw new Error(
+        `PortixOne runtime returned a non-JSON response (${response.status} ${response.statusText}) — is a Portix Runtime actually listening at ${this.baseUrl}?`,
+      );
+    }
+    return parsedBody as T;
   }
 }

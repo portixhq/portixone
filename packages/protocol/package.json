@@ -1,6 +1,6 @@
 {
   "name": "@portixone/protocol",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Message contract (print jobs, capabilities, WebSocket events) shared between the Portix Runtime and its SDKs.",
   "license": "MIT",
   "repository": {

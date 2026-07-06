@@ -9,6 +9,6 @@
     "start": "node index.js"
   },
   "dependencies": {
-    "@portixone/sdk": "^0.2.0"
+    "@portixone/sdk": "^0.3.0"
   }
 }

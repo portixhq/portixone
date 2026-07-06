@@ -1,0 +1,14 @@
+{
+  "name": "print-ticket-example",
+  "private": true,
+  "version": "1.0.0",
+  "description": "A real, formatted restaurant receipt printed with @portixone/sdk — not a hello-world string.",
+  "type": "module",
+  "main": "print-ticket.js",
+  "scripts": {
+    "start": "node print-ticket.js"
+  },
+  "dependencies": {
+    "@portixone/sdk": "^0.3.0"
+  }
+}
