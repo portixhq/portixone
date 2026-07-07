@@ -1,16 +1,15 @@
 # kubia-demo
 
-"Kubia" is a stand-in name for any SaaS integrating PortixOne — this walks through Milestone 3's actual target flow, not a simplified version of it:
+"Kubia" is a stand-in name for any SaaS integrating PortixOne — this walks through the actual target flow for a multi-tenant integration, not a simplified version of it:
 
 Register business → connect a printer (pair) → choose which one → save → make a sale → print.
 
 ## Run it
 
-1. Start the PortixOne Runtime (`npm run dev` in `runtime/`) and the Tray (`npm run dev` in `tray/`) — the Tray's **Pairing Requests** menu is how you approve the pairing request in step 2.
-2. Build the SDK and its dependencies once from the repo root: `npm run build`.
-3. Open `index.html` directly in a browser — no dev server or bundler needed.
+1. Start the PortixOne Runtime (`npm run dev` in `runtime/`) and the Tray (`npm run dev` in `tray/`) — a native notification plus the Tray's **Pairing Requests** menu is how you approve the pairing request in step 2.
+2. Open `index.html` directly in a browser — no build step, no bundler, no local monorepo dependency.
 
-Uses the monorepo's local `sdk-js` build via relative imports (not the published `@portixone/sdk` npm package, like `examples/basic-print/` does) — `pair()`, `listPrinters()`, and `on()` are newer than the last publish.
+Uses the real published `@portixone/sdk` package straight from npm via `esm.sh` (`https://esm.sh/@portixone/sdk@0.3.1`) — this is exactly what `npm install @portixone/sdk` gets a real integrator, not a monorepo shortcut.
 
 ## What it exercises
 

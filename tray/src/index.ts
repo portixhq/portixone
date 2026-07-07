@@ -253,8 +253,12 @@ function notifyNewPairingRequests(pending: PendingPairingSummary[]): void {
       // callers, which never send an Origin header.
       const subject = request.origin ? displayOrigin(request.origin) : request.appId;
       notifier.notify({
-        title: 'Portix.One',
-        message: `${subject} wants to print.\nTenant: ${request.tenant} — click to review in the tray.`,
+        // No `title` here on purpose — `appID` already puts "Portix.One" in
+        // the toast's own header row; repeating it as the body title too
+        // just duplicated the brand name for no reason (caught by actually
+        // looking at the rendered toast, not just reading the call).
+        title: `${subject} wants to print`,
+        message: `Tenant: ${request.tenant}`,
         icon: iconPath,
         appID: 'Portix.One',
         sound: true,

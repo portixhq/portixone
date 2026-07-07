@@ -77,7 +77,7 @@ The distinction: not *Kubia Demo*, but *Kubia usa PortixOne* — a real `npm ins
 
 ⚠️ **`examples/kubia-demo/index.html` audited against exactly that bar** (grepped for `ESC`, `USB`, `driver`, `winspool`, `escpos`, `queue`, `pairing.`, `Windows`, COM ports, port `9100`) — zero matches. The demo only calls `new Portix()`, `connect()`, `pair()`, `on()`, `listPrinters()`, `print()`. The boundary holds for this one example.
 
-❌ **Not yet real**: `kubia-demo` still imports PortixOne via a relative path inside this monorepo, not `npm install @portixone/sdk`. Epic 2's blocker is gone now — `@portixone/sdk@0.3.0` is live and has every method the demo uses — so what's left is purely: point a real Kubia project at `npm install @portixone/sdk` and use it daily, not open the demo occasionally.
+✅ **Now real** (2026-07-07): `kubia-demo/index.html` imports the real published `@portixone/sdk@0.3.1` from `esm.sh` — no monorepo build step, no relative import. Ran the exact flow end to end using the real npm package: `pair()` → a native Windows toast fired → approved from the tray → `listPrinters()` returned this machine's actual Windows-registered printers (including the real physical SICAR WL88S) → `print()` queued successfully. This is the closest simulation of a real Kubia integration this project can run without an actual outside stranger — what's left for that is Fase 10 itself, not more plumbing.
 
 ---
 

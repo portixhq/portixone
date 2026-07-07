@@ -50,22 +50,12 @@
     <pre id="log"></pre>
 
     <!--
-      Plain HTML has no bundler to resolve npm package names, so this import
-      map stands in for one. Points at the monorepo's local build, not the
-      published npm package — pair()/listPrinters()/on() are newer than the
-      last @portixone/sdk publish.
+      The real published @portixone/sdk package, served via esm.sh — exactly
+      what a real integrator gets from `npm install @portixone/sdk` plus a
+      bundler, with zero monorepo build step required to try this demo.
     -->
-    <script type="importmap">
-      {
-        "imports": {
-          "@portixone/protocol": "../../packages/protocol/dist/index.js",
-          "@portixone/shared": "../../packages/shared/dist/index.js",
-          "zod": "https://esm.sh/zod@3.25.76"
-        }
-      }
-    </script>
     <script type="module">
-      import { Portix } from '../../sdk-js/dist/index.js';
+      import { Portix } from 'https://esm.sh/@portixone/sdk@0.3.1';
 
       const logEl = document.getElementById('log');
       const log = (label, data) => {
