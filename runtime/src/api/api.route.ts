@@ -11,6 +11,7 @@ import type { PrinterManager } from '../printer/printer.manager.js';
 import type { PairingService } from '../pairing/pairing.service.js';
 import type { MetricsService } from '../metrics/metrics.service.js';
 import { handleHealth } from './health.controller.js';
+import { handleDashboard, handleSetDefaultPrinter } from './dashboard.controller.js';
 import { handlePrint } from './print.controller.js';
 import { handleGetPrinter, handleListPrinters } from './printers.controller.js';
 import { handleCancelJob, handleGetJobs } from './jobs.controller.js';
@@ -94,6 +95,22 @@ export function createApiServer({
       if (req.method === 'GET' && pathname === '/ping') {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ pong: true }));
+        return;
+      }
+
+      // No auth on the page itself — it's static markup. The admin key
+      // arrives via `?key=` (the tray already reads it straight off disk to
+      // open this URL) and the page's own JS attaches it to every API call
+      // it makes from there; same trust model as the tray's own access.
+      if (req.method === 'GET' && pathname === '/dashboard') {
+        handleDashboard(res);
+        return;
+      }
+
+      if (req.method === 'POST' && pathname === '/config/default-printer') {
+        const context = assertAuthenticated(req, auth, adminKey());
+        assertAdmin(context);
+        await handleSetDefaultPrinter(req, res, configService);
         return;
       }
 

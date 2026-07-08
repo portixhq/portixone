@@ -52,4 +52,11 @@ export class ConfigService {
     }
     return this.config;
   }
+
+  /** Persists the chosen default printer — used by the local dashboard's setup step. */
+  setDefaultPrinter(name: string): void {
+    const config = this.get();
+    config.defaultPrinter = name;
+    this.storage.write(config);
+  }
 }

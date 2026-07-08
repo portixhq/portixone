@@ -33,6 +33,7 @@ const CONNECTED_APPS_POLL_INTERVAL_MS = 15000;
 // Installers don't ship often yet — no need to hit GitHub's API more than a few times a day.
 const UPDATE_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
 
+const OPEN_DASHBOARD = 'Open Dashboard';
 const OPEN_LOGS = 'Open Logs';
 const RESTART_SERVICE = 'Restart Runtime';
 const CLOSE_TRAY = 'Close Tray';
@@ -154,6 +155,14 @@ const updateItem: MenuItem = {
 let pendingDownloadUrl: string | undefined;
 /** Codes already notified about — a native toast should fire once per new request, not once per 5s poll. */
 let notifiedCodes = new Set<string>();
+/** True once we've either auto-opened the dashboard for first-run setup or the user opened it themselves — either way, stop offering to auto-open it again this session. */
+let dashboardOffered = false;
+
+/** Opens the local dashboard/setup page in the default browser, with the admin key in the URL so its own JS can call the API — see dashboard.controller.ts's route comment for the trust model. */
+function openDashboard(connection: { host: string; port: number; apiKey: string }): void {
+  const url = `http://${connection.host}:${connection.port}/dashboard?key=${encodeURIComponent(connection.apiKey)}`;
+  exec(`start "" "${url}"`);
+}
 
 function buildMenu(): Menu {
   return {
@@ -163,6 +172,7 @@ function buildMenu(): Menu {
     items: [
       statusItem,
       SysTray.separator,
+      { title: OPEN_DASHBOARD, tooltip: 'Set up your default printer and print a test ticket', checked: false, enabled: true },
       printersSubmenu,
       pairingSubmenu,
       connectedAppsSubmenu,
@@ -190,6 +200,14 @@ let revokeActionsByTitle = new Map<string, string>();
 
 await systray.onClick((action: ClickEvent) => {
   switch (action.item.title) {
+    case OPEN_DASHBOARD: {
+      dashboardOffered = true;
+      const connection = readRuntimeConnection();
+      if (connection) {
+        openDashboard(connection);
+      }
+      break;
+    }
     case OPEN_LOGS:
       exec(`explorer.exe "${daemonLogDir}"`);
       break;
@@ -357,6 +375,19 @@ async function pollHealth(): Promise<void> {
     ? `PortixOne Runtime${health.defaultPrinter ? ` — default printer: ${health.defaultPrinter}` : ''}`
     : 'PortixOne Runtime is not reachable';
   await systray.sendAction({ type: 'update-item', item: statusItem });
+
+  // First-run welcome: no default printer configured yet means setup was
+  // never completed, so open the dashboard once on its own instead of
+  // waiting for someone to notice the tray icon exists. Reusing
+  // `defaultPrinter` as the "is setup done" signal avoids inventing a
+  // separate first-run flag — once it's set, this never fires again.
+  if (health.online && !health.defaultPrinter && !dashboardOffered) {
+    dashboardOffered = true;
+    const connection = readRuntimeConnection();
+    if (connection) {
+      openDashboard(connection);
+    }
+  }
 }
 
 async function pollPrinters(): Promise<void> {

@@ -12,7 +12,7 @@
 #define MyAppName "PortixOne Runtime"
 #define MyAppVersion "0.1.0"
 #define MyAppPublisher "PortixOne"
-#define MyAppURL "https://portix.dev"
+#define MyAppURL "https://portix.one"
 #define ServiceDisplayName "PortixOne Runtime"
 
 [Setup]
@@ -24,6 +24,12 @@ AppPublisherURL={#MyAppURL}
 DefaultDirName={autopf}\PortixOne
 DefaultGroupName=PortixOne
 DisableProgramGroupPage=yes
+; Nothing on the Select Destination or Ready to Install pages is ever worth
+; a stranger's attention — the install path is fixed, there's no components
+; to pick. Cuts the wizard to Welcome -> Installing -> Finished, matching
+; the "double-click, wait, done" goal (ROADMAP.md Fase 4).
+DisableDirPage=yes
+DisableReadyPage=yes
 OutputDir=dist
 OutputBaseFilename=PortixOneRuntimeSetup
 Compression=lzma2
