@@ -12,5 +12,10 @@ export class SecurityService {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', `Content-Type, ${API_KEY_HEADER}`);
+    // Chrome's Private Network Access requires this on the preflight when the
+    // calling page was loaded from a public origin (e.g. portix.one) and the
+    // target is a private/loopback address (this runtime, always localhost)
+    // — without it, real browser calls from the public landing page fail.
+    res.setHeader('Access-Control-Allow-Private-Network', 'true');
   }
 }
