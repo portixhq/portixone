@@ -12,7 +12,9 @@
     "service:install": "node scripts/service.install.js",
     "service:uninstall": "node scripts/service.uninstall.js",
     "service:start": "net start \"PortixOne Runtime\"",
-    "service:stop": "net stop \"PortixOne Runtime\""
+    "service:stop": "net stop \"PortixOne Runtime\"",
+    "firewall:install": "node scripts/firewall.install.js",
+    "firewall:uninstall": "node scripts/firewall.uninstall.js"
   },
   "dependencies": {
     "@portixone/escpos": "*",

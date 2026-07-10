@@ -48,6 +48,11 @@ export class ClientAdapter {
     this.apiKey = token;
   }
 
+  /** The currently-active credential — used by RuntimeSocket to authenticate its WebSocket handshake with the exact same key this adapter's HTTP calls already use. */
+  getCredential(): string {
+    return this.apiKey;
+  }
+
   async print(job: PrintOptions): Promise<PrintResult> {
     return this.requestJson<PrintResult>('POST', '/print', { body: job });
   }

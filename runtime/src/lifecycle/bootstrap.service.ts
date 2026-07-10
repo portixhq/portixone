@@ -10,6 +10,7 @@ import { PairingService } from '../pairing/pairing.service.js';
 import { MetricsService } from '../metrics/metrics.service.js';
 import { createApiServer } from '../api/api.route.js';
 import { WebSocketManager } from '../api/websocket.manager.js';
+import { AuthService } from '../auth/auth.service.js';
 import { registerShutdown } from './shutdown.service.js';
 
 export interface RuntimeContext {
@@ -38,7 +39,12 @@ export async function bootstrap(): Promise<RuntimeContext> {
   const metricsService = new MetricsService(queueStore, pairingStore);
 
   const server = createApiServer({ configService, logger, queueService, printerManager, pairingService, metricsService });
-  const wsManager = new WebSocketManager(server);
+  // A second, stateless AuthService instance (it only wraps pairingService,
+  // already shared) — kept separate from createApiServer's own so the
+  // WebSocket upgrade check doesn't require reshaping that function's
+  // return contract just to expose its internal auth instance.
+  const auth = new AuthService(pairingService);
+  const wsManager = new WebSocketManager(server, auth, () => configService.get().apiKey, logger);
   queueService.attachWebSocketManager(wsManager);
   metricsService.attachWebSocketManager(wsManager);
   queueService.recover();

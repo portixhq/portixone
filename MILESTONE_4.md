@@ -45,6 +45,10 @@ The surface an external developer meets before ever touching code.
 
 The 7-item real-world checklist (renumbered from the original session; item 1 — clean install — now lives under Epic 1 since it's a distribution blocker, not a validation task).
 
+### Confirmed physical output from the dashboard "Print test ticket" button
+
+❌ **TECH DEBT — open, hardware-gated (2026-07-10).** The dashboard flow is code-complete and its UI states are verified (the button polls `/jobs` for the real outcome and reports "Submitted to printer — accepted by Windows", deliberately NOT "Printed", because a spooler-accepted job is not proof of paper — confirmed via the Windows print event log that a job can report `completed` while the spooler silently stalls and nothing comes out). The runtime-side pre-flight was also relaxed so a transient `PrinterStatus: Error`/`Unknown` from generic/USB drivers warns instead of hard-blocking. **What's still unproven and must be closed when the physical printer is on hand**: (1) that clicking "Print test ticket" reliably produces a real physical ticket on the SICAR WL88S across several consecutive presses (one earlier attempt failed transiently, the flakiness is uncharacterized), and (2) that "Submitted to printer" can be upgraded to genuine confirmed-printed only once there's a trustworthy signal that paper actually came out. Both need the thermal printer connected — not available in the session that shipped these fixes.
+
 ### Different printer brands (Epson, Xprinter, Bematech, Star, Sicar, Generic/Text Only)
 
 ❌ **Needs physical hardware this session doesn't have.** Only `Sicar` (`SICAR WL88S`, driver "Generic / Text Only") has ever been print-tested for real (see [[portixone_printer_drivers]]). Epson/Xprinter/Star are standard ESC/POS over TCP:9100 in principle (`network.driver.ts` targets exactly that), so most likely to already work — but unverified. Bematech has known real-world ESC/POS quirks (a de facto Brazilian standard with its own escape sequences) — highest-risk brand on this list.

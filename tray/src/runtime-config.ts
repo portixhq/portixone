@@ -6,7 +6,9 @@ import { DEFAULT_RUNTIME_HOST, DEFAULT_RUNTIME_PORT } from '@portixone/shared';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // Tray and runtime are installed as sibling folders on the same machine —
 // same pattern already used for daemonLogDir in index.ts, no IPC needed.
-const CONFIG_PATH = join(__dirname, '..', '..', 'runtime', '.data', 'config.json');
+// Exported so the tray's "Settings" menu item can reveal this exact file
+// without a second, independently-maintained path computation.
+export const CONFIG_PATH = join(__dirname, '..', '..', 'runtime', '.data', 'config.json');
 
 export interface RuntimeConnection {
   apiKey: string;

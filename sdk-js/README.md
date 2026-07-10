@@ -96,7 +96,7 @@ portix.on("paired", ({ deviceId, permissions }) => {
 
 `tenant` and `appId` are required for both paths — they're how the runtime tells your integration apart from every other app paired to the same machine.
 
-**No approval needed from `localhost`, `127.0.0.1`, or a private-network origin (`192.168.x.x`, `10.x.x.x`, `172.16-31.x.x`)** — pairing resolves immediately with no human involved, since the browser's `Origin` header already proves it's this developer's own machine or LAN. This only kicks in for a real public domain, where the tray approval above still applies. Note this is Origin-header-based: a plain Node.js script (no browser) won't send one, so it always needs that one-time tray approval regardless of network.
+**No approval needed from `localhost`, `127.0.0.1`, or `::1`** — pairing resolves immediately with no human involved, since only code already running on this exact machine can produce that Origin. This does not extend to LAN/private-IP origins (`192.168.x.x`, `10.x.x.x`, etc.) — `Origin` is a plain HTTP header on this endpoint, not something only a browser can set, so anything else always goes through the normal tray approval, same as a real public domain. Note this is Origin-header-based: a plain Node.js script (no browser) won't send one, so it always needs that one-time tray approval regardless.
 
 ## API reference
 

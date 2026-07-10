@@ -1,14 +1,22 @@
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { exec } from 'node:child_process';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import notifier from 'node-notifier';
 import type { ClickEvent, Menu, MenuItem } from 'systray2';
 import { APP_VERSION } from '@portixone/shared';
 import type { PairedAppSummary, PendingPairingSummary, PrinterInfo } from '@portixone/protocol';
 import { checkRuntimeHealth } from './runtime-status.js';
-import { readRuntimeConnection } from './runtime-config.js';
-import { approvePairing, listPairedApps, listPendingPairings, listPrinters, revokePairing } from './runtime-client.js';
+import { CONFIG_PATH, readRuntimeConnection } from './runtime-config.js';
+import {
+  approvePairing,
+  downloadDiagnostics,
+  listPairedApps,
+  listPendingPairings,
+  listPrinters,
+  revokePairing,
+} from './runtime-client.js';
 import { checkForUpdate } from './updater.js';
 import { downloadAndRunInstaller } from './update-installer.js';
 
@@ -21,7 +29,10 @@ const { default: SysTray } = require('systray2') as typeof import('systray2');
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const iconPath = join(__dirname, '..', 'assets', 'icon.ico');
 const iconPendingPath = join(__dirname, '..', 'assets', 'icon-pending.ico');
+const iconOfflinePath = join(__dirname, '..', 'assets', 'icon-offline.ico');
+const iconUpdatingPath = join(__dirname, '..', 'assets', 'icon-updating.ico');
 const daemonLogDir = join(__dirname, '..', '..', 'runtime', 'scripts', 'daemon');
+const diagnosticsDir = join(__dirname, '..', '..', 'runtime', '.data', 'diagnostics');
 
 const SERVICE_NAME = 'PortixOne Runtime';
 const HEALTH_POLL_INTERVAL_MS = 5000;
@@ -36,7 +47,9 @@ const UPDATE_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
 const OPEN_DASHBOARD = 'Open Dashboard';
 const REVIEW_IN_BROWSER = 'Review in browser…';
 const OPEN_LOGS = 'Open Logs';
+const EXPORT_DIAGNOSTICS = 'Export Diagnostics';
 const RESTART_SERVICE = 'Restart Runtime';
+const OPEN_SETTINGS = 'Settings';
 const CLOSE_TRAY = 'Close Tray';
 const PRINTERS_HEADER = 'Printers';
 const PAIRING_HEADER = 'Pairing Requests';
@@ -104,11 +117,16 @@ function fillSlots<T>(slots: MenuItem[], data: T[], render: (slot: MenuItem, ite
   });
 }
 
+// enabled:true is load-bearing, not cosmetic: this item's text is repainted
+// live via `update-item`, and on Windows an `enabled:false` top-level item is
+// exactly the case where the earlier stuck-text bug lived. Clicking it does
+// nothing (its title matches no action in onClick's switch), so keeping it
+// enabled is harmless while guaranteeing the status text actually updates.
 const statusItem: MenuItem = {
   title: 'Checking runtime status…',
   tooltip: 'PortixOne Runtime status',
   checked: false,
-  enabled: false,
+  enabled: true,
 };
 
 const printersSubmenu: MenuItem = {
@@ -159,10 +177,17 @@ const updateItem: MenuItem = {
   enabled: true,
 };
 let pendingDownloadUrl: string | undefined;
+/** installerFileName/checksumsUrl travel alongside pendingDownloadUrl — all three come from the same checkForUpdate() result and are needed together to verify the installer before running it (see update-installer.ts). */
+let pendingInstallerFileName: string | undefined;
+let pendingChecksumsUrl: string | undefined;
 /** Codes already notified about — a native toast should fire once per new request, not once per 5s poll. */
 let notifiedCodes = new Set<string>();
 /** True once we've either auto-opened the dashboard for first-run setup or the user opened it themselves — either way, stop offering to auto-open it again this session. */
 let dashboardOffered = false;
+/** Drives the red tray icon — takes priority over every other state below since an unreachable Runtime makes everything else moot. */
+let isRuntimeOffline = false;
+/** Drives the blue tray icon while a downloaded installer is being run — set right before `downloadAndRunInstaller`, see handleInstallUpdate. */
+let isUpdating = false;
 
 /** Opens one of the runtime's local pages (dashboard, pairing approval UI) in the default browser, with the admin key in the URL so its own JS can call the API — see dashboard.controller.ts's route comment for the trust model. */
 function openLocalPage(connection: { host: string; port: number; apiKey: string }, path: string): void {
@@ -170,9 +195,23 @@ function openLocalPage(connection: { host: string; port: number; apiKey: string 
   exec(`start "" "${url}"`);
 }
 
+/** Priority order matches how urgently each state needs the user's attention: unreachable beats an in-progress update beats a pending pairing beats "everything's fine". */
+function currentIconPath(): string {
+  if (isRuntimeOffline) {
+    return iconOfflinePath;
+  }
+  if (isUpdating) {
+    return iconUpdatingPath;
+  }
+  if (hasPendingRequests) {
+    return iconPendingPath;
+  }
+  return iconPath;
+}
+
 function buildMenu(): Menu {
   return {
-    icon: hasPendingRequests ? iconPendingPath : iconPath,
+    icon: currentIconPath(),
     title: 'PortixOne',
     tooltip: 'PortixOne Runtime',
     items: [
@@ -184,9 +223,11 @@ function buildMenu(): Menu {
       connectedAppsSubmenu,
       SysTray.separator,
       { title: OPEN_LOGS, tooltip: 'Open the service log folder', checked: false, enabled: true },
+      { title: EXPORT_DIAGNOSTICS, tooltip: 'Save a diagnostics.zip (logs, config, printers) for support', checked: false, enabled: true },
       { title: RESTART_SERVICE, tooltip: 'Stop and start the Runtime (needs admin)', checked: false, enabled: true },
       updateItem,
       SysTray.separator,
+      { title: OPEN_SETTINGS, tooltip: 'Reveal the Runtime config file (restart the Runtime after editing it)', checked: false, enabled: true },
       {
         title: CLOSE_TRAY,
         tooltip: 'Close this tray icon — the Runtime keeps running in the background',
@@ -224,6 +265,12 @@ await systray.onClick((action: ClickEvent) => {
     case OPEN_LOGS:
       exec(`explorer.exe "${daemonLogDir}"`);
       break;
+    case EXPORT_DIAGNOSTICS:
+      void handleExportDiagnostics();
+      break;
+    case OPEN_SETTINGS:
+      exec(`explorer.exe /select,"${CONFIG_PATH}"`);
+      break;
     case RESTART_SERVICE:
       exec(`net stop "${SERVICE_NAME}" && net start "${SERVICE_NAME}"`, (error) => {
         if (error) {
@@ -258,6 +305,29 @@ await systray.onClick((action: ClickEvent) => {
     }
   }
 });
+
+async function handleExportDiagnostics(): Promise<void> {
+  const connection = readRuntimeConnection();
+  const zipBuffer = connection ? await downloadDiagnostics(connection) : undefined;
+  if (!zipBuffer) {
+    notifier.notify({
+      title: 'Export Diagnostics failed',
+      message: 'Could not reach the Runtime — is it running?',
+      icon: iconPath,
+      appID: 'Portix.One',
+      sound: false,
+    });
+    return;
+  }
+  mkdirSync(diagnosticsDir, { recursive: true });
+  const fileName = `diagnostics-${new Date().toISOString().replace(/[:.]/g, '-')}.zip`;
+  const filePath = join(diagnosticsDir, fileName);
+  writeFileSync(filePath, zipBuffer);
+  // /select reveals the file itself in an open Explorer window rather than
+  // just opening its parent folder — one less step to find it among any
+  // previous exports.
+  exec(`explorer.exe /select,"${filePath}"`);
+}
 
 async function handleApprove(code: string): Promise<void> {
   const connection = readRuntimeConnection();
@@ -299,6 +369,8 @@ async function handleCheckForUpdates(manual = true): Promise<void> {
   const result = await checkForUpdate();
   if (result.updateAvailable && result.downloadUrl) {
     pendingDownloadUrl = result.downloadUrl;
+    pendingInstallerFileName = result.installerFileName;
+    pendingChecksumsUrl = result.checksumsUrl;
     updateItem.title = INSTALL_UPDATE_NOW;
     updateItem.tooltip = `v${result.latestVersion} is available — click to download and install (will restart the Runtime)`;
     if (manual) {
@@ -312,6 +384,8 @@ async function handleCheckForUpdates(manual = true): Promise<void> {
     }
   } else {
     pendingDownloadUrl = undefined;
+    pendingInstallerFileName = undefined;
+    pendingChecksumsUrl = undefined;
     updateItem.title = CHECK_FOR_UPDATES;
     updateItem.tooltip = result.checked
       ? `You're on the latest version (v${APP_VERSION})`
@@ -336,17 +410,31 @@ async function handleInstallUpdate(): Promise<void> {
   }
   updateItem.title = 'Downloading update…';
   updateItem.enabled = false;
-  await systray.sendAction({ type: 'update-item', item: updateItem });
+  isUpdating = true;
+  await systray.sendAction({ type: 'update-menu', menu: buildMenu() }); // update-item alone wouldn't repaint the icon
 
   try {
     // The installer's own PrepareToInstall step kills this tray process and
-    // relaunches it once reinstalled — nothing more to do here on success.
-    await downloadAndRunInstaller(pendingDownloadUrl);
+    // relaunches it once reinstalled — nothing more to do here on success,
+    // including reverting isUpdating: this process won't be alive to see it.
+    await downloadAndRunInstaller(pendingDownloadUrl, pendingInstallerFileName, pendingChecksumsUrl);
   } catch (error) {
-    console.error('Update install failed:', (error as Error).message);
+    const message = (error as Error).message;
+    console.error('Update install failed:', message);
+    // A console.error alone is invisible on a no-window tray app — this is
+    // the one place a failed update (including a rejected/mismatched
+    // checksum) needs to actually reach the person running it.
+    notifier.notify({
+      title: 'Update failed',
+      message,
+      icon: iconPath,
+      appID: 'Portix.One',
+      sound: true,
+    });
     updateItem.title = INSTALL_UPDATE_NOW;
     updateItem.enabled = true;
-    await systray.sendAction({ type: 'update-item', item: updateItem });
+    isUpdating = false;
+    await systray.sendAction({ type: 'update-menu', menu: buildMenu() });
   }
 }
 
@@ -387,6 +475,15 @@ async function pollHealth(): Promise<void> {
   statusItem.tooltip = health.online
     ? `PortixOne Runtime${health.defaultPrinter ? ` — default printer: ${health.defaultPrinter}` : ''}`
     : 'PortixOne Runtime is not reachable';
+  isRuntimeOffline = !health.online;
+  // Two separate actions on purpose — proven necessary by a standalone
+  // systray2 repro on this OS: an item repainted via `update-item` updated
+  // correctly, while the same item repainted via `update-menu` or
+  // `update-menu-and-item` stayed frozen. The top-level icon color lives on
+  // the Menu object and only `update-menu` repaints it; a top-level item's
+  // TEXT only repaints via `update-item`. So the icon goes through
+  // update-menu and the status text through its own update-item.
+  await systray.sendAction({ type: 'update-menu', menu: buildMenu() });
   await systray.sendAction({ type: 'update-item', item: statusItem });
 
   // First-run welcome: no default printer configured yet means setup was

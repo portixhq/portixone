@@ -1,6 +1,8 @@
 import type { Server } from 'node:http';
 import { WebSocketServer, type WebSocket } from 'ws';
 import { WS_EVENTS } from '@portixone/protocol';
+import type { AuthService } from '../auth/auth.service.js';
+import type { LoggerService } from '../logger/logger.service.js';
 
 export class WebSocketManager {
   private readonly wss: WebSocketServer;
@@ -12,8 +14,28 @@ export class WebSocketManager {
    */
   private totalDisconnects = 0;
 
-  constructor(httpServer: Server) {
-    this.wss = new WebSocketServer({ server: httpServer });
+  /**
+   * One security model regardless of protocol: HTTP requires a key, so this
+   * does too — same `AuthService.authenticate()` every HTTP endpoint already
+   * uses (admin key or a valid paired-app token), checked before the
+   * handshake completes. A native browser WebSocket can't set custom
+   * headers, so the key travels as a `?key=` query param instead — the only
+   * channel available (RuntimeSocket, the SDK's client, sends it this way).
+   */
+  constructor(httpServer: Server, auth: AuthService, getAdminKey: () => string, logger: LoggerService) {
+    this.wss = new WebSocketServer({
+      server: httpServer,
+      verifyClient: ({ req }, callback) => {
+        const key = new URL(req.url ?? '/', 'http://localhost').searchParams.get('key') ?? undefined;
+        try {
+          auth.authenticate(key, getAdminKey());
+          callback(true);
+        } catch {
+          logger.warn('Rejected WebSocket connection — missing or invalid API key');
+          callback(false, 401, 'Unauthorized');
+        }
+      },
+    });
     this.wss.on('connection', (socket) => {
       this.clients.add(socket);
       socket.send(JSON.stringify({ event: WS_EVENTS.STATUS, data: { status: 'online' } }));

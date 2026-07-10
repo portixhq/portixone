@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readdir, rm, unlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -14,6 +14,30 @@ const execFileAsync = promisify(execFile);
 const SCRIPT_PATH = fileURLToPath(new URL('../../../scripts/send-raw-print.ps1', import.meta.url));
 /** Guards against winspool.drv / the spooler service hanging — execFile has no timeout by default. */
 const SPOOLER_TIMEOUT_MS = 10000;
+
+/**
+ * Unlike the per-call temp file (deleted immediately after send), these are
+ * kept on disk so a failed/questionable physical print can be replayed
+ * outside PortixOne (send-raw-print.ps1 directly) to tell apart a bad ESC/POS
+ * payload from a spooler/USB/hardware problem — the gap identified 2026-07-10
+ * where the runtime reported "completed" but no paper came out. Capped to the
+ * most recent 20 so this can't grow unbounded on a busy printer.
+ */
+const PRINT_BUFFER_DIR = join(process.cwd(), '.data', 'print-buffers');
+const MAX_KEPT_BUFFERS = 20;
+
+async function persistBufferForDiagnostics(printerName: string, buffer: Buffer): Promise<void> {
+  await mkdir(PRINT_BUFFER_DIR, { recursive: true });
+  const safeName = printerName.replace(/[^a-zA-Z0-9_-]/g, '_');
+  const fileName = `${new Date().toISOString().replace(/[:.]/g, '-')}-${safeName}.bin`;
+  await writeFile(join(PRINT_BUFFER_DIR, fileName), buffer);
+
+  const files = (await readdir(PRINT_BUFFER_DIR)).sort();
+  const excess = files.length - MAX_KEPT_BUFFERS;
+  if (excess > 0) {
+    await Promise.all(files.slice(0, excess).map((file) => unlink(join(PRINT_BUFFER_DIR, file))));
+  }
+}
 
 /** send-raw-print.ps1's own thrown messages for a call that started but failed partway through. */
 const MID_OPERATION_FAILURES = ['StartDocPrinter failed', 'StartPagePrinter failed', 'WritePrinter failed', 'WritePrinter wrote'];
@@ -34,6 +58,10 @@ export class WindowsSpoolerPrinterDriver implements PrinterDriver {
 
     const buffer = new EscposBuilder().text(job.content).feed(5).cut().build();
     const copies = job.copies ?? 1;
+
+    // Best-effort — a diagnostics write failure (e.g. disk full) must never
+    // block an actual print.
+    await persistBufferForDiagnostics(printerName, buffer).catch(() => undefined);
 
     const dir = await mkdtemp(join(tmpdir(), 'portix-print-'));
     const dataFile = join(dir, 'job.bin');

@@ -6,6 +6,7 @@ runtime/scripts/daemon/
 installer/staging/
 installer/dist/
 installer/.cache/
+installer/version.iss
 *.log
 .env
 .env.local
@@ -13,3 +14,16 @@ installer/.cache/
 .DS_Store
 Thumbs.db
 .claude/
+
+# Sibling ecosystem repos, kept as subfolders on disk for convenience only —
+# each is its own independent git repo (see README's repo network table),
+# never part of this monorepo's history.
+/portix.dev/
+/portix-runtime/
+/portix-sdk-js/
+/awesome-web-printing/
+/browser-printing-examples/
+/escpos-cheatsheet/
+/thermal-printer-test-files/
+/portixone-github-profile/
+/portixone-profile/

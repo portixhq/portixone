@@ -17,6 +17,7 @@ import { handlePrint } from './print.controller.js';
 import { handleGetPrinter, handleListPrinters } from './printers.controller.js';
 import { handleCancelJob, handleGetJobs } from './jobs.controller.js';
 import { handleGetMetrics } from './metrics.controller.js';
+import { handleDiagnostics } from './diagnostics.controller.js';
 import {
   handleListPairings,
   handleListPendingPairings,
@@ -54,6 +55,7 @@ const STATUS_BY_ERROR_CODE: Record<string, number> = {
   PRINTER_NOT_READY: 503,
   INVALID_DRIVER_CONFIG: 503,
   PRINTER_CONNECTION_FAILED: 503,
+  PAYLOAD_TOO_LARGE: 413,
 };
 
 /** Admin key requests act on behalf of no single app; a paired token is scoped to its own tenant/app. */
@@ -204,6 +206,13 @@ export function createApiServer({
         const context = assertAuthenticated(req, auth, adminKey());
         assertAdmin(context);
         handleGetMetrics(res, metricsService);
+        return;
+      }
+
+      if (req.method === 'GET' && pathname === '/diagnostics') {
+        const context = assertAuthenticated(req, auth, adminKey());
+        assertAdmin(context);
+        await handleDiagnostics(res, configService, printerManager);
         return;
       }
 

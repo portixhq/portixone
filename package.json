@@ -11,6 +11,7 @@
   ],
   "scripts": {
     "dev": "npm -w runtime run dev",
+    "prebuild": "node scripts/sync-version.js",
     "build": "npm run build --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "eslint .",

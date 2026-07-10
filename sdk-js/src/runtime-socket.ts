@@ -16,7 +16,7 @@ interface WireMessage {
 export class RuntimeSocket {
   private readonly socket?: WebSocket;
 
-  constructor(host: string | undefined, port: number | undefined, events: PortixEventBus) {
+  constructor(host: string | undefined, port: number | undefined, apiKey: string, events: PortixEventBus) {
     if (typeof WebSocket === 'undefined') {
       console.warn(
         'PortixOne: no global WebSocket available (needs a browser or Node 22+) — live job events are disabled, poll getJobs() instead.',
@@ -24,7 +24,12 @@ export class RuntimeSocket {
       return;
     }
 
-    const url = `ws://${host ?? DEFAULT_RUNTIME_HOST}:${port ?? DEFAULT_RUNTIME_PORT}`;
+    // The Runtime now requires a valid key on every WebSocket connection,
+    // same as its HTTP endpoints — but a browser's native WebSocket can't
+    // set custom headers on the handshake, so the key travels as a query
+    // param instead, the only channel available (matches the dashboard's
+    // own `?key=` link — see dashboard.controller.ts).
+    const url = `ws://${host ?? DEFAULT_RUNTIME_HOST}:${port ?? DEFAULT_RUNTIME_PORT}?key=${encodeURIComponent(apiKey)}`;
     this.socket = new WebSocket(url);
     this.socket.addEventListener('message', (event) => {
       try {

@@ -137,11 +137,12 @@ export class Portix {
 
   /**
    * Requests pairing and blocks until it's approved — instantly for a
-   * localhost/private-network origin (the runtime auto-trusts those), or
-   * until a human approves it from the PortixOne tray's Pairing Requests
-   * menu otherwise. Distinct from the public `pair()` below, which returns
-   * the code immediately for callers (like a multi-tenant SaaS) that want to
-   * show it to a human themselves instead of waiting here.
+   * localhost origin (the runtime auto-trusts only that, not LAN/private-IP
+   * origins — see pairing.service.ts's isTrustedOrigin), or until a human
+   * approves it from the PortixOne tray's Pairing Requests menu otherwise.
+   * Distinct from the public `pair()` below, which returns the code
+   * immediately for callers (like a multi-tenant SaaS) that want to show it
+   * to a human themselves instead of waiting here.
    */
   private async autoPair(adapter: ClientAdapter, tenant: string, appId: string): Promise<void> {
     const result = await adapter.requestPairing(tenant, appId);
@@ -251,7 +252,8 @@ export class Portix {
   /** Subscribes to runtime job events (`job:queued`, `job:printing`, ...) or the SDK-local `'paired'` event. */
   on(event: PortixEvent, handler: PortixEventHandler): () => void {
     if (this.mode !== 'mock' && !this.socket) {
-      this.socket = new RuntimeSocket(this.options.host, this.options.port, this.events);
+      const adapter = this.requireAdapter();
+      this.socket = new RuntimeSocket(this.options.host, this.options.port, adapter.getCredential(), this.events);
     }
     return this.events.on(event, handler);
   }

@@ -145,6 +145,24 @@ async function refreshJobs() {
   }
 }
 
+// The immediate POST /print response is always "pending" (the queue enqueues
+// first, prints async) — so the button click waits here, polling /jobs for
+// this job's own id, until it lands on completed/failed/cancelled (or a
+// generous timeout) instead of leaving the visible result frozen on "pending"
+// while the real outcome is only ever shown in the jobs table below.
+async function pollJobResult(jobId, timeoutMs) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const jobs = await api('/jobs');
+    const job = jobs.find((j) => j.jobId === jobId);
+    if (job && job.status !== 'pending' && job.status !== 'printing') {
+      return job;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+  return undefined;
+}
+
 document.getElementById('printTestBtn').onclick = async () => {
   const btn = document.getElementById('printTestBtn');
   const resultEl = document.getElementById('printTestResult');
@@ -152,7 +170,21 @@ document.getElementById('printTestBtn').onclick = async () => {
   resultEl.textContent = 'Printing…';
   try {
     const result = await api('/print', { method: 'POST', body: JSON.stringify({ content: 'PortixOne test ticket\\n\\nIf you can read this, printing works!' }) });
-    resultEl.textContent = 'Sent — job ' + result.jobId + ' (' + result.status + ')';
+    const finalJob = await pollJobResult(result.jobId, 10000);
+    if (!finalJob) {
+      resultEl.textContent = 'Job ' + result.jobId + ' is still pending after 10s — check Recent jobs below.';
+    } else if (finalJob.status === 'completed') {
+      // "completed" only means the Windows spooler accepted the bytes
+      // without error — for the windows-spooler driver that is NOT the same
+      // as confirmed physical output (see printer-status.ts and the
+      // 2026-07-10 packaging-validation notes: a job has reported completed
+      // here while the spooler silently stalled and nothing printed).
+      // Wording it as "printed" would overclaim something this driver can't
+      // actually confirm.
+      resultEl.textContent = 'Submitted to printer — job ' + result.jobId + ' accepted by Windows. Check the physical printer for output.';
+    } else {
+      resultEl.textContent = 'Job ' + result.jobId + ' ' + finalJob.status + (finalJob.message ? ': ' + finalJob.message : '') + '.';
+    }
     await refreshJobs();
   } catch (error) {
     resultEl.textContent = 'Failed: ' + error.message;

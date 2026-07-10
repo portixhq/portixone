@@ -10,6 +10,10 @@ export interface UpdateCheckResult {
   currentVersion: string;
   latestVersion?: string;
   downloadUrl?: string;
+  /** The exact filename of the installer asset — needed to look it up by name inside SHA256SUMS.txt. */
+  installerFileName?: string;
+  /** SHA256SUMS.txt's own download URL, published alongside the installer by installer/release.js — undefined if this release predates that. */
+  checksumsUrl?: string;
   error?: string;
 }
 
@@ -70,12 +74,15 @@ export async function checkForUpdate(): Promise<UpdateCheckResult> {
     }
 
     const asset = release.assets.find((candidate) => candidate.name.endsWith('.exe'));
+    const checksumsAsset = release.assets.find((candidate) => candidate.name === 'SHA256SUMS.txt');
     return {
       checked: true,
       updateAvailable: isNewer(latestVersion, currentVersion),
       currentVersion: APP_VERSION,
       latestVersion: release.tag_name,
       downloadUrl: asset?.browser_download_url,
+      installerFileName: asset?.name,
+      checksumsUrl: checksumsAsset?.browser_download_url,
     };
   } catch (error) {
     return { ...base, error: (error as Error).message };

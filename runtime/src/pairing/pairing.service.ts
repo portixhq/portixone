@@ -16,15 +16,20 @@ const CODE_TTL_MS = 5 * 60 * 1000;
 const APPROVED_GRACE_MS = 2 * 60 * 1000;
 const DEFAULT_PERMISSIONS: Permission[] = ['print'];
 
-/** Loopback and RFC 1918 private ranges — never reachable from outside this machine's own network. */
-const PRIVATE_IPV4 = /^(127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/;
-
 /**
- * A pairing request from localhost or a private-network origin never needs a
- * human to click "Allow" — the browser Origin already proves it's this
- * developer's own machine or LAN, the same trust boundary SSH gives
- * known-hosts on a private network. Anything else (a real public domain)
- * still goes through the normal approve flow.
+ * A pairing request from localhost never needs a human to click "Allow" —
+ * only code already running on this same machine can make the Runtime see
+ * that as the request's Origin, which is as strong a signal as "this is the
+ * same developer's own machine" gets.
+ *
+ * Deliberately NOT extended to LAN/private-IP origins (10.x/172.16-31.x/
+ * 192.168.x), despite that once being the design here: `Origin` is a plain,
+ * unauthenticated HTTP header on this raw endpoint, not something only a
+ * real browser can set — anything on the same network segment (not just a
+ * browser) can send `Origin: http://192.168.x.x` by hand and get an
+ * unattended, permanent print-capable token. Loopback doesn't have that gap:
+ * reaching 127.0.0.1/::1 already means code execution on this exact host,
+ * which is a materially higher bar than "somewhere on the LAN."
  */
 function isTrustedOrigin(origin?: string): boolean {
   if (!origin) {
@@ -32,7 +37,7 @@ function isTrustedOrigin(origin?: string): boolean {
   }
   try {
     const hostname = new URL(origin).hostname;
-    return hostname === 'localhost' || hostname === '::1' || PRIVATE_IPV4.test(hostname);
+    return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1';
   } catch {
     return false;
   }

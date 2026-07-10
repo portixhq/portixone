@@ -57,3 +57,21 @@ export async function approvePairing(connection: RuntimeConnection, code: string
     return false;
   }
 }
+
+/** Longer timeout than authenticatedGet's default — building the zip involves a live printer detection sweep, not just a disk read. */
+const DIAGNOSTICS_TIMEOUT_MS = 10000;
+
+export async function downloadDiagnostics(connection: RuntimeConnection): Promise<Buffer | undefined> {
+  try {
+    const response = await fetch(`http://${connection.host}:${connection.port}/diagnostics`, {
+      headers: { [API_KEY_HEADER]: connection.apiKey },
+      signal: AbortSignal.timeout(DIAGNOSTICS_TIMEOUT_MS),
+    });
+    if (!response.ok) {
+      return undefined;
+    }
+    return Buffer.from(await response.arrayBuffer());
+  } catch {
+    return undefined;
+  }
+}

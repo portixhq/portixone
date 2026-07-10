@@ -118,3 +118,10 @@ export class InvalidDriverConfigError extends PortixError {
     super(`Printer driver is not configured correctly: ${details}`, 'INVALID_DRIVER_CONFIG');
   }
 }
+
+/** Thrown before a request body is fully read, not after parsing — protects an unauthenticated endpoint (e.g. /pairing/request) from an unbounded-memory DoS. */
+export class PayloadTooLargeError extends PortixError {
+  constructor(maxBytes: number) {
+    super(`Request body exceeds the ${maxBytes}-byte limit.`, 'PAYLOAD_TOO_LARGE');
+  }
+}

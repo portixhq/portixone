@@ -166,7 +166,7 @@ mkdirSync(join(stagingDir, 'node'), { recursive: true });
 cpSync(embeddedNodeExe, join(stagingDir, 'node', 'node.exe'));
 
 stageApp('runtime', RUNTIME_DEPS, ['scripts', '.env.example']);
-stageApp('tray', TRAY_DEPS, ['assets', 'launch-hidden.vbs']);
+stageApp('tray', TRAY_DEPS, ['assets', 'launch-hidden.ps1']);
 
 // The generated node-windows daemon wrapper/logs are machine-specific —
 // never ship them, `service.install.js` (re)creates them on the target.

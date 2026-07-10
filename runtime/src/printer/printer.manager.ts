@@ -30,7 +30,10 @@ export class PrinterManager {
   private readonly driverType: RuntimeConfig['printerDriver'];
   private readonly defaultPrinter?: string;
 
-  constructor(config: RuntimeConfig, logger: LoggerService) {
+  constructor(
+    config: RuntimeConfig,
+    private readonly logger: LoggerService,
+  ) {
     this.driver = createDriver(config, logger);
     this.driverType = config.printerDriver;
     this.defaultPrinter = config.defaultPrinter;
@@ -83,6 +86,6 @@ export class PrinterManager {
     if (!printer) {
       throw new PrinterNotFoundError(name);
     }
-    assertPrinterStatusReady(printer.status);
+    assertPrinterStatusReady(printer.status, name, this.logger);
   }
 }
