@@ -60,9 +60,9 @@ await portix.print({
 ┌────────────────────────────────┐
 │ PORTIX MOCK PRINT PREVIEW      │
 ├────────────────────────────────┤
-│ Hello PortixOne!                │
+│ Hello PortixOne!               │
 ├────────────────────────────────┤
-│ copies: 1                       │
+│ copies: 1                      │
 └────────────────────────────────┘
 ```
 

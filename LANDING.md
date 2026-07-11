@@ -65,7 +65,7 @@ Show only the minimal example. Nothing else on this section.
 ```js
 import { Portix } from "@portixone/sdk"
 
-const portix = new Portix()
+const portix = new Portix({ appId: "my-app", tenant: "default" })
 
 await portix.connect()
 await portix.print(receipt)

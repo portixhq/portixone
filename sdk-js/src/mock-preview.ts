@@ -5,7 +5,7 @@ export function renderMockReceipt(job: PrintOptions): string {
   const lines = job.content.split('\n').filter((line) => line.length > 0);
   const width = Math.max(28, ...lines.map((line) => line.length)) + 4;
   const border = '─'.repeat(width);
-  const pad = (line: string) => `│ ${line.padEnd(width - 2)}│`;
+  const pad = (line: string) => `│ ${line.padEnd(width - 2)} │`;
 
   return [
     `┌${border}┐`,
