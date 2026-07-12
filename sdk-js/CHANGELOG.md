@@ -1,5 +1,9 @@
 # @portixone/sdk
 
+## 0.3.4
+
+- Mock-mode preview box now aligns: the content rows were one column short of the frame, so the right edge never lined up with the top/bottom corners. Purely cosmetic — `print()`'s returned `preview` string and every other behavior is unchanged.
+
 ## 0.3.3
 
 - A missing/unreachable Runtime now throws a clear `RuntimeUnreachableError` ("Could not reach the Portix Runtime at ... — it's probably not installed or not running. Download it from https://portix.one/download and try again.") instead of a raw `TypeError: fetch failed`. In a browser, `connect()` also best-effort opens the download page itself via `window.open()` — silently a no-op where popup blockers require a user gesture, which is why the message always states the URL too. `RuntimeUnreachableError` is exported for apps that want to handle it with their own UI instead.
