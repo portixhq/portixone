@@ -27,9 +27,22 @@ export interface PortixOptions {
    * `"runtime"` (default) talks to a real Portix Runtime. `"mock"` needs no
    * runtime and no printer at all — `print()` renders a text preview of the
    * receipt instead, so a stranger can try the SDK in one command.
+   *
+   * This is a NON-AUTHORITATIVE convenience hint, never a production switch:
+   * whether an Application is licensed for commercial production is decided by
+   * the Runtime and a cloud-signed license token, never by a value the browser
+   * sets (licensing plan §5, §7). Setting `mode: "runtime"` does not "turn on"
+   * production, and it never affects billing.
    */
   mode?: 'runtime' | 'mock';
-  /** This integration's identity with the runtime. Required for `connect()` to pair automatically, and to call `pair()` directly. */
+  /**
+   * This integration's identity with the runtime — and, once registered in the
+   * Portix Developer Portal, the **public Application ID** (`app_<slug>_<rand>`)
+   * the license token is bound to (licensing plan §5). It is public by design:
+   * only a public identifier and a public integration key ever ship in a browser
+   * bundle — never a secret. Required for `connect()` to pair automatically, and
+   * to call `pair()` directly.
+   */
   appId?: string;
   /** The specific business/customer this connection is on behalf of. Required for `connect()` to pair automatically, and to call `pair()` directly. */
   tenant?: string;
