@@ -12,7 +12,11 @@ const ALIGN_COMMAND = {
  * hardware or OS printer queue; that's `runtime/src/printer/drivers`.
  */
 export class EscposBuilder {
-  private chunks: Buffer[] = [ESCPOS_COMMANDS.INIT];
+  // INIT resets the printer; selecting WPC1252 up front makes the latin1 bytes
+  // written by text() render as the intended accented characters (see
+  // SELECT_CODEPAGE_WPC1252). Without it the printer falls back to its default
+  // table and non-ASCII text prints as garbage.
+  private chunks: Buffer[] = [ESCPOS_COMMANDS.INIT, ESCPOS_COMMANDS.SELECT_CODEPAGE_WPC1252];
 
   text(content: string, options: EscposTextOptions = {}): this {
     if (options.align) {
@@ -21,7 +25,10 @@ export class EscposBuilder {
     if (options.bold) {
       this.chunks.push(ESCPOS_COMMANDS.BOLD_ON);
     }
-    this.chunks.push(Buffer.from(content, 'utf-8'), ESCPOS_COMMANDS.LINE_FEED);
+    // latin1, not utf-8: the printer reads one byte per character against the
+    // WPC1252 table selected in the constructor. utf-8 would send two bytes per
+    // accented character and print mojibake.
+    this.chunks.push(Buffer.from(content, 'latin1'), ESCPOS_COMMANDS.LINE_FEED);
     if (options.bold) {
       this.chunks.push(ESCPOS_COMMANDS.BOLD_OFF);
     }
