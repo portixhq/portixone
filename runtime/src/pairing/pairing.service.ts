@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { randomInt, randomUUID } from 'node:crypto';
 import type {
   PairingRecord,
   PairingRequestResult,
@@ -51,9 +51,13 @@ interface PendingPairing {
   approved?: { token: string; deviceId: string; permissions: Permission[]; approvedAt: number };
 }
 
+// Uses crypto randomInt, not Math.random: knowing a pending code is enough to
+// retrieve the approved token via the unauthenticated GET /pairing/status,
+// so the code must not be predictable from prior outputs (a Math.random PRNG
+// state can be recovered from observed values).
 function generateCode(): string {
   const segment = (): string =>
-    Array.from({ length: 4 }, () => CODE_CHARSET[Math.floor(Math.random() * CODE_CHARSET.length)]).join('');
+    Array.from({ length: 4 }, () => CODE_CHARSET[randomInt(CODE_CHARSET.length)]).join('');
   return `${segment()}-${segment()}`;
 }
 
