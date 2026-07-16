@@ -10,7 +10,9 @@ import type { QueueService } from '../queue/queue.service.js';
 import type { PrinterManager } from '../printer/printer.manager.js';
 import type { PairingService } from '../pairing/pairing.service.js';
 import type { MetricsService } from '../metrics/metrics.service.js';
+import type { LicenseService } from '../license/license.service.js';
 import { handleHealth } from './health.controller.js';
+import { handleLicenseStatus } from './license.controller.js';
 import { handleDashboard, handleSetDefaultPrinter } from './dashboard.controller.js';
 import { handlePairingApprovalUI } from './pairing-ui.controller.js';
 import { handlePrint } from './print.controller.js';
@@ -35,6 +37,7 @@ interface RouteDeps {
   printerManager: PrinterManager;
   pairingService: PairingService;
   metricsService: MetricsService;
+  licenseService: LicenseService;
 }
 
 const STATUS_BY_ERROR_CODE: Record<string, number> = {
@@ -73,6 +76,7 @@ export function createApiServer({
   printerManager,
   pairingService,
   metricsService,
+  licenseService,
 }: RouteDeps): Server {
   const auth = new AuthService(pairingService);
   const security = new SecurityService();
@@ -213,6 +217,13 @@ export function createApiServer({
         const context = assertAuthenticated(req, auth, adminKey());
         assertAdmin(context);
         await handleDiagnostics(res, configService, printerManager);
+        return;
+      }
+
+      if (req.method === 'GET' && pathname === '/license') {
+        const context = assertAuthenticated(req, auth, adminKey());
+        assertAdmin(context);
+        handleLicenseStatus(res, licenseService);
         return;
       }
 

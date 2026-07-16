@@ -8,4 +8,8 @@ export const runtimeConfigSchema = z.object({
   printerDriver: z.enum(['mock', 'network', 'windows-spooler']),
   networkPrinterHost: z.string().min(1).optional(),
   networkPrinterPort: z.number().int().positive(),
+  applicationId: z.string().min(1).optional(),
+  licenseHeartbeatUrl: z.string().url().optional(),
+  licenseRegistrationUrl: z.string().url().optional(),
+  installationToken: z.string().min(1).optional(),
 });

@@ -38,6 +38,10 @@ export class ConfigService {
         Number(process.env.PORTIX_NETWORK_PRINTER_PORT) ||
         stored?.networkPrinterPort ||
         DEFAULT_NETWORK_PRINTER_PORT,
+      applicationId: process.env.PORTIX_APPLICATION_ID || stored?.applicationId,
+      licenseHeartbeatUrl: process.env.PORTIX_LICENSE_HEARTBEAT_URL || stored?.licenseHeartbeatUrl,
+      licenseRegistrationUrl: process.env.PORTIX_LICENSE_REGISTRATION_URL || stored?.licenseRegistrationUrl,
+      installationToken: process.env.PORTIX_INSTALLATION_TOKEN || stored?.installationToken,
     };
 
     runtimeConfigSchema.parse(resolved);
