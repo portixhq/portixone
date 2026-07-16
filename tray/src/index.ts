@@ -367,6 +367,15 @@ async function handleCheckForUpdates(manual = true): Promise<void> {
   await systray.sendAction({ type: 'update-item', item: updateItem });
 
   const result = await checkForUpdate();
+  // Never let a check disappear without a trace. "No update" and "couldn't check" look identical
+  // from the outside, and when a check finds nothing the interesting part is WHY it passed each
+  // candidate over — a channel mismatch and a missing checksum are very different problems.
+  console.log(
+    `[update] channel=${result.channel} checked=${result.checked} available=${result.updateAvailable}` +
+      `${result.latestVersion ? ` latest=${result.latestVersion}` : ''}` +
+      `${result.error ? ` error=${result.error}` : ''}` +
+      `${result.rejected?.length ? ` rejected=${result.rejected.map((r) => `${r.tag}:${r.reason}`).join(',')}` : ''}`,
+  );
   if (result.updateAvailable && result.downloadUrl) {
     pendingDownloadUrl = result.downloadUrl;
     pendingInstallerFileName = result.installerFileName;

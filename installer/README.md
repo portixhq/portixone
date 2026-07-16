@@ -61,6 +61,58 @@ node installer/release.js
 
 Run after the artifacts above already exist in `installer/dist/` (the compiled `.exe` and/or the portable `.zip`) — this doesn't build anything, it publishes alongside them: `SHA256SUMS.txt` (one line per artifact, standard `<hash>  <filename>` format) and `RELEASE_NOTES.md` (the topmost dated section of the root `CHANGELOG.md`, since that changelog is organized by milestone/date rather than by a per-version heading).
 
+### Publishing a Runtime release — the rules the updater depends on
+
+This repo publishes releases for several products from one feed: the Runtime installer, and npm
+package tags (`sdk-v0.3.4`, `protocol-v0.2.2`, …). The tray's updater (`tray/src/updater.ts`)
+therefore selects releases by the Runtime's own tag convention and **never** consults
+`/releases/latest`. Break these rules and installed trays silently stop seeing updates.
+
+**1. Tag convention — the channel lives in the tag.**
+
+| Tag | Channel | Who gets it |
+|---|---|---|
+| `runtime-v0.1.1` | `stable` | everyone |
+| `runtime-v0.2.0-beta.1` | `beta` | beta + internal machines |
+| `runtime-v0.1.1-internal.1` | `internal` | internal machines only |
+
+A plain tag (no suffix) that is **flagged as a GitHub pre-release** is treated as `internal`, never
+as stable — so a pilot published under a plain tag can't be pushed to everyone by accident.
+Channels are inclusive downward: an internal machine still takes a newer stable.
+
+A machine's channel comes from `PORTIX_UPDATE_CHANNEL` (`stable` unless explicitly opted in).
+
+**2. Every Runtime release MUST carry both assets:**
+
+- `PortixOne-Setup.exe` — the version-less filename is deliberate; `portix.one/download` redirects
+  to it, so renaming it breaks the download CTA.
+- `SHA256SUMS.txt` — the tray refuses to run an installer it cannot verify, so a release without
+  checksums is skipped entirely. An unverifiable installer is worse than no update.
+
+**3. The version in the tag must match the artifact.** The `.exe` reports the root `package.json`
+version (via `scripts/sync-version.js` → `version.iss` + `APP_VERSION`). Tag `runtime-v0.1.1` must
+be built from a tree whose version is `0.1.1`, or a machine will "update" and still report the old
+version — and then re-offer the same update forever.
+
+**4. Never publish a Runtime release without the `runtime-` prefix.** `v0.1.1` or `0.1.1` are
+invisible to every installed tray.
+
+```bash
+gh release create runtime-v0.1.1 \
+  --title "PortixOne Runtime 0.1.1" \
+  --notes-file installer/dist/RELEASE_NOTES.md \
+  --target master \
+  installer/dist/PortixOne-Setup.exe \
+  installer/dist/PortixOneRuntimePortable.zip \
+  installer/dist/SHA256SUMS.txt
+# add --prerelease for an internal/pilot build
+```
+
+**Intended end state:** a product-owned signed manifest at
+`https://releases.portix.one/runtime/<channel>.json`, so update discovery doesn't depend on GitHub's
+release feed at all. The GitHub filtering above is the transitional implementation; swapping it
+touches only `fetchReleases()` in the updater.
+
 ## Verified (`/VERYSILENT` installs on this machine)
 
 - Fresh install → service running, `/health` responding, tray launched, Start Menu + Startup shortcuts present.
