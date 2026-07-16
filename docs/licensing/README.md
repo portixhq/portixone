@@ -37,10 +37,12 @@ installation-token & heartbeat endpoints, readiness/observability.
 
 Closed the mono-side controls from the design review, in order:
 
-1. **Fail-closed keyring** — separate `license.keyring.prod.ts` / `license.keyring.dev.ts`.
-   Production trusts only the production keyring; boot **aborts** if a dev `kid` is present
-   (`assertNoDevKeysInProduction`); a test asserts the dev `kid` never appears in the prod source.
-   Env resolution defaults to production (`resolveLicenseEnv` — dev requires an explicit opt-in).
+1. **Fail-closed keyring — partially closed, see SEC-LIC-001 above.** Separate
+   `license.keyring.prod.ts` / `license.keyring.dev.ts`; production trusts only the production
+   keyring; boot **aborts** if a dev `kid` is present (`assertNoDevKeysInProduction`); env resolution
+   defaults to production (`resolveLicenseEnv` — dev requires an explicit opt-in). What this does
+   **not** yet do: keep the development keyring out of the production *artifact*, so an explicit
+   `PORTIX_LICENSE_ENV=development` can still reach it. Fail-closed by default ≠ unreachable.
 2. **Precedence table** (`license.precedence.test.ts`) — the shared source of truth for
    token/commercial/connectivity/revocation → posture. `derivePosture` is the one implementation.
 3. **Heartbeat negatives** — immediate revocation only for the recognized `LicenseRevocationNotice`
@@ -73,6 +75,25 @@ Closed the mono-side controls from the design review, in order:
 - [x] Runtime/SDK/cloud shared contracts drafted → promoted into `@portixone/protocol`
 - [x] Founder ratified the 5 open decisions (2026-07-11 — baked into the artifacts above)
 - [ ] **Terms reviewed for legal soundness** (not legal advice — needs a real review before publish)
+
+## 🔴 SEC-LIC-001 — blocks Creator GA
+
+**A production build can still be pointed at the development signing authority.** `license.keyring.ts`
+statically imports the development keyring, and `tsc` compiles all of `src/`, so
+`license.keyring.dev.js` ships inside the installer. The matching private key is public (it lives in
+`runtime/test-support/`), so anyone can mint development-signed tokens — and
+`PORTIX_LICENSE_ENV=development` promotes them to valid authority. `resolveLicenseEnv()` defaulting to
+production does **not** close this, because the value can be set explicitly.
+
+This violates the invariant: *a production build must never be able to select, load, or recognize a
+development licensing authority.*
+
+**P0 before monetization.** Blocks Creator GA / the first paying customer. Does **not** block internal
+pilots, where licensing is inert and there is nothing to bypass. Full acceptance criteria:
+[issue #4](https://github.com/portixhq/portixone/issues/4). The fix is physically separate entrypoints
+(`license.keyring.production.ts` / `license.keyring.development.ts`) with the development keyring
+outside the production module graph — not tree-shaking — plus a test that inspects the real staged
+artifact rather than `src/`.
 
 ## Decisions still owned by the founder / business (deliberately not made in code)
 
