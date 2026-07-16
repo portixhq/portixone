@@ -4,3 +4,4 @@ export * from './protocol.constants.js';
 export * from './pairing.types.js';
 export * from './pairing.schema.js';
 export * from './metrics.types.js';
+export * from './license.types.js';
