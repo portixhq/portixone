@@ -98,11 +98,15 @@ Auth, projects, API keys, dashboard, device fleet management, licensing, telemet
 
 ## Pricing model (for Fase 11)
 
-The monetization principle: revenue must never precede value. The SDK stays free and open; commercial value concentrates in the Runtime and the capabilities around administering it, so payment only becomes relevant once PortixOne is already part of a customer's workflow.
+The monetization principle: revenue must never precede value, and **never meter curiosity — meter dependency**. The SDK, Runtime, real printing, and unlimited development use are all free; payment becomes relevant only when a developer moves an Application into commercial production. Portix charges for the **right to deploy and redistribute commercially**, never for volume — printers, tickets, projects, apps, end customers, machines, and installations are never metered. The unit of billing is the **Developer Identity**, not the app or the customer.
 
-- **Free** — SDK, 1 Runtime, 1 Printer, unlimited development use, community support, basic updates. `$0`.
-- **Pro** — unlimited printers, auto-updates, logs, monitoring, remote pairing, priority support, commercial use. Suggested `$19–29/month`.
-- **Business** — multi-tenant, fleet management, cloud dashboard, teams, analytics, SSO, SLA. `Contact Sales`.
+- **Free — Development** — full SDK + Runtime, mock and real printing, printer detection, unlimited dev projects, complete docs, local dashboard. May register an Application and run **one 14-day Launch Trial** per app. `$0`.
+- **Creator — Commercial** — commercial use and redistribution: unlimited Applications, end customers, installations, and printers under one identity; signed production tokens; per-Application installers/links; simplified pairing. `$24 / month` or `$240 / year` (two months free), per Developer Identity.
+- **Founder Creator Pass** — lifetime Creator for one Developer Identity, plus a Founder badge and early betas. `$240 one-time`, **launch only, a single irrevocable supply of 100 seats** — no second batch, no price change. The **priority launch offer**: same $240 as a year of Creator, paid once, forever — the lifetime-vs-annual contrast is the conversion anchor.
+
+Tagline: **Free → Build & validate · Creator → Launch & distribute · Founder → forever.**
+
+Full plan, terms, and data model: [LICENSING_PLAN.md](LICENSING_PLAN.md) and [docs/licensing/](docs/licensing/). This supersedes the earlier Free/Pro/Business tiers.
 
 ---
 
