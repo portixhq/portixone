@@ -28,9 +28,12 @@ export interface CachedLicense {
  * password — but it is per-installation state, so it lives with the installation, not in the repo.
  */
 export class LicenseStore {
-  private readonly storage = new StorageRepository<CachedLicense>(
-    join(process.cwd(), '.data', 'license.json'),
-  );
+  private readonly storage: StorageRepository<CachedLicense>;
+
+  /** `filePath` is injectable so parallel test files don't silently fight over one cwd-fixed file. */
+  constructor(filePath: string = join(process.cwd(), '.data', 'license.json')) {
+    this.storage = new StorageRepository<CachedLicense>(filePath);
+  }
 
   read(): CachedLicense | undefined {
     return this.storage.read();

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { APP_VERSION } from '@portixone/shared';
 import {
   checkForUpdate,
   isNewer,
@@ -169,16 +170,27 @@ test('an internal pilot machine DOES see a newer internal build', () => {
 // ── checkForUpdate wiring ───────────────────────────────────────────────────────────────────
 
 test('checkForUpdate reports an update with both URLs, never a bare boolean', async () => {
+  // Deliberately far above any real version: this test is about the shape of the result, and
+  // pinning it near APP_VERSION would make it fail every time the product is released (it did —
+  // bumping to 0.1.1 turned "runtime-v0.1.1" from an update into the current version).
   const result = await checkForUpdate({
     channel: 'stable',
-    releases: [release('sdk-v0.3.4'), release('runtime-v0.1.1')],
+    releases: [release('sdk-v0.3.4'), release('runtime-v99.0.0')],
   });
   assert.equal(result.checked, true);
   assert.equal(result.updateAvailable, true);
-  assert.equal(result.latestVersion, '0.1.1');
+  assert.equal(result.latestVersion, '99.0.0');
   assert.ok(result.downloadUrl?.endsWith('PortixOne-Setup.exe'));
   assert.ok(result.checksumsUrl?.endsWith('SHA256SUMS.txt'));
   assert.equal(result.installerFileName, 'PortixOne-Setup.exe');
+});
+
+test('a release matching this exact build is not an update — no self-update loop', async () => {
+  // The guard against the classic bug: ship 0.1.1, publish runtime-v0.1.1, and have every machine
+  // re-offer itself its own version forever.
+  const result = await checkForUpdate({ channel: 'stable', releases: [release(`runtime-v${APP_VERSION}`)] });
+  assert.equal(result.checked, true);
+  assert.equal(result.updateAvailable, false);
 });
 
 test('checkForUpdate distinguishes "checked, up to date" from "could not check"', async () => {

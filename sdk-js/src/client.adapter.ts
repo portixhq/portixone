@@ -6,8 +6,10 @@ import type {
   PairingStatusResult,
   PortixClientOptions,
   PrinterInfo,
+  PrinterTargetsView,
   PrintOptions,
   PrintResult,
+  PrintTarget,
   RuntimeMetrics,
   RuntimeStatusResult,
 } from './types.js';
@@ -67,6 +69,28 @@ export class ClientAdapter {
 
   async listPrinters(): Promise<PrinterInfo[]> {
     return this.requestJson('GET', '/printers');
+  }
+
+  /** This app's own target configuration on this machine — how it knows whether setup is still needed. */
+  async getPrinterTargets(): Promise<PrinterTargetsView> {
+    return this.requestJson('GET', '/printer-targets');
+  }
+
+  async assignPrinterTarget(appId: string, target: PrintTarget, printerName: string): Promise<unknown> {
+    return this.requestJson('PUT', `/printer-targets/${encodeURIComponent(appId)}/${encodeURIComponent(target)}`, {
+      body: { printerName },
+    });
+  }
+
+  async testPrinterTarget(appId: string, target: PrintTarget): Promise<PrintResult> {
+    return this.requestJson('POST', `/printer-targets/${encodeURIComponent(appId)}/${encodeURIComponent(target)}/test`);
+  }
+
+  async confirmPrinterTarget(appId: string, target: PrintTarget): Promise<unknown> {
+    return this.requestJson(
+      'POST',
+      `/printer-targets/${encodeURIComponent(appId)}/${encodeURIComponent(target)}/confirm`,
+    );
   }
 
   async getPrinter(name: string): Promise<PrinterInfo> {

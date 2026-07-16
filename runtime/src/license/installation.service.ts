@@ -19,6 +19,8 @@ export interface InstallationServiceOptions {
   /** portix-cloud's installation-registration endpoint. Unset = exchange skipped. */
   registrationUrl?: string;
   fetchImpl?: FetchLike;
+  /** Injectable state path so parallel test files don't fight over one cwd-fixed file. */
+  identityFilePath?: string;
 }
 
 interface RegistrationResponse {
@@ -43,7 +45,7 @@ interface RegistrationResponse {
  * token).
  */
 export class InstallationService {
-  private readonly store = new InstallationStore();
+  private readonly store: InstallationStore;
   private readonly fetchImpl?: FetchLike;
 
   constructor(
@@ -51,6 +53,7 @@ export class InstallationService {
     private readonly license: LicenseService,
     private readonly options: InstallationServiceOptions = {},
   ) {
+    this.store = new InstallationStore(options.identityFilePath);
     this.fetchImpl = options.fetchImpl ?? (globalThis.fetch as FetchLike | undefined);
   }
 

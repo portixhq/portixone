@@ -9,8 +9,10 @@ import type {
   PortixEventHandler,
   PortixOptions,
   PrinterInfo,
+  PrinterTargetsView,
   PrintOptions,
   PrintResult,
+  PrintTarget,
   RuntimeMetrics,
   RuntimeStatusResult,
 } from './types.js';
@@ -201,6 +203,45 @@ export class Portix {
 
   async getPrinter(name: string): Promise<PrinterInfo> {
     return this.requireAdapter().getPrinter(name);
+  }
+
+  /**
+   * This app's logical print targets on this machine, and what they resolve to.
+   *
+   * The names in here (`EPSON TM-T20III`, …) are this one installation's business — read them to
+   * build a setup screen, not to hardcode into `print()`. Print with `{ target: 'receipt' }` and the
+   * Runtime resolves it per machine, which is what lets one integration serve every customer.
+   */
+  async getPrinterTargets(): Promise<PrinterTargetsView> {
+    if (this.mode === 'mock') {
+      return { appId: this.options.appId ?? 'mock', origin: '*', targets: {} };
+    }
+    return this.requireAdapter().getPrinterTargets();
+  }
+
+  /** Binds a logical target to a physical printer on this machine. The setup screen's "assign" step. */
+  async assignPrinterTarget(target: PrintTarget, printerName: string): Promise<void> {
+    const appId = this.requireAppId('assignPrinterTarget');
+    await this.requireAdapter().assignPrinterTarget(appId, target, printerName);
+  }
+
+  /** Prints a test ticket through a target, so a human can confirm paper came out of the right device. */
+  async testPrinterTarget(target: PrintTarget): Promise<PrintResult> {
+    const appId = this.requireAppId('testPrinterTarget');
+    return this.requireAdapter().testPrinterTarget(appId, target);
+  }
+
+  /** Records that a human confirmed the test ticket — the difference between "assigned" and "verified". */
+  async confirmPrinterTarget(target: PrintTarget): Promise<void> {
+    const appId = this.requireAppId('confirmPrinterTarget');
+    await this.requireAdapter().confirmPrinterTarget(appId, target);
+  }
+
+  private requireAppId(method: string): string {
+    if (!this.options.appId) {
+      throw new Error(`${method}() needs an \`appId\` — targets are configured per application.`);
+    }
+    return this.options.appId;
   }
 
   async getJobs(): Promise<JobRecord[]> {

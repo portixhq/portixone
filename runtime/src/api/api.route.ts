@@ -1,7 +1,7 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { PortixError } from '@portixone/shared';
 import { AuthService, type AuthContext } from '../auth/auth.service.js';
-import { assertAdmin, assertAuthenticated, assertPermission } from '../auth/auth.middleware.js';
+import { assertAdmin, assertAuthenticated, assertOwnAppOrAdmin, assertPermission } from '../auth/auth.middleware.js';
 import { SecurityService } from '../security/security.service.js';
 import type { ConfigService } from '../config/config.service.js';
 import type { LoggerService } from '../logger/logger.service.js';
@@ -11,8 +11,18 @@ import type { PrinterManager } from '../printer/printer.manager.js';
 import type { PairingService } from '../pairing/pairing.service.js';
 import type { MetricsService } from '../metrics/metrics.service.js';
 import type { LicenseService } from '../license/license.service.js';
+import type { PrinterTargetsService } from '../printer/printer-targets.service.js';
 import { handleHealth } from './health.controller.js';
 import { handleLicenseStatus } from './license.controller.js';
+import {
+  handleConfirmTarget,
+  handleDeleteTarget,
+  handleGetOwnTargets,
+  handleGetTargetsForApp,
+  handleListAllTargets,
+  handleSetTarget,
+  handleTestTarget,
+} from './printer-targets.controller.js';
 import { handleDashboard, handleSetDefaultPrinter } from './dashboard.controller.js';
 import { handlePairingApprovalUI } from './pairing-ui.controller.js';
 import { handlePrint } from './print.controller.js';
@@ -38,6 +48,7 @@ interface RouteDeps {
   pairingService: PairingService;
   metricsService: MetricsService;
   licenseService: LicenseService;
+  printerTargets: PrinterTargetsService;
 }
 
 const STATUS_BY_ERROR_CODE: Record<string, number> = {
@@ -59,6 +70,10 @@ const STATUS_BY_ERROR_CODE: Record<string, number> = {
   INVALID_DRIVER_CONFIG: 503,
   PRINTER_CONNECTION_FAILED: 503,
   PAYLOAD_TOO_LARGE: 413,
+  // 409, not 400: the request is perfectly well-formed — this machine just isn't set up for it yet,
+  // which is a state the caller resolves by running printer setup, not by fixing its payload.
+  TARGET_NOT_CONFIGURED: 409,
+  MAPPING_INVALID: 409,
 };
 
 /** Admin key requests act on behalf of no single app; a paired token is scoped to its own tenant/app. */
@@ -77,6 +92,7 @@ export function createApiServer({
   pairingService,
   metricsService,
   licenseService,
+  printerTargets,
 }: RouteDeps): Server {
   const auth = new AuthService(pairingService);
   const security = new SecurityService();
@@ -130,7 +146,62 @@ export function createApiServer({
       if (req.method === 'POST' && pathname === '/print') {
         const context = assertAuthenticated(req, auth, adminKey());
         assertPermission(context, 'print');
-        await handlePrint(req, res, queueService, toOwner(context));
+        await handlePrint(req, res, queueService, printerTargets, context, toOwner(context));
+        return;
+      }
+
+      // A paired app reads its OWN target configuration — this is what tells it whether it still
+      // needs to run printer setup, without exposing what other apps on this machine are doing.
+      if (req.method === 'GET' && pathname === '/printer-targets') {
+        const context = assertAuthenticated(req, auth, adminKey());
+        if (context.isAdmin) {
+          handleListAllTargets(res, printerTargets);
+        } else {
+          handleGetOwnTargets(res, printerTargets, context);
+        }
+        return;
+      }
+
+      const targetsForAppMatch = pathname.match(/^\/printer-targets\/([^/]+)$/);
+      if (req.method === 'GET' && targetsForAppMatch) {
+        const context = assertAuthenticated(req, auth, adminKey());
+        assertAdmin(context);
+        handleGetTargetsForApp(res, printerTargets, decodeURIComponent(targetsForAppMatch[1]));
+        return;
+      }
+
+      const targetMatch = pathname.match(/^\/printer-targets\/([^/]+)\/([^/]+)$/);
+      if (targetMatch) {
+        const context = assertAuthenticated(req, auth, adminKey());
+        const appId = decodeURIComponent(targetMatch[1]);
+        const target = decodeURIComponent(targetMatch[2]);
+        assertOwnAppOrAdmin(context, appId);
+        if (req.method === 'PUT') {
+          await handleSetTarget(req, res, printerTargets, printerManager, context, appId, target);
+          return;
+        }
+        if (req.method === 'DELETE') {
+          handleDeleteTarget(res, printerTargets, context, appId, target);
+          return;
+        }
+      }
+
+      const targetTestMatch = pathname.match(/^\/printer-targets\/([^/]+)\/([^/]+)\/test$/);
+      if (req.method === 'POST' && targetTestMatch) {
+        const context = assertAuthenticated(req, auth, adminKey());
+        const appId = decodeURIComponent(targetTestMatch[1]);
+        assertOwnAppOrAdmin(context, appId);
+        assertPermission(context, 'print');
+        await handleTestTarget(res, printerTargets, queueService, context, appId, decodeURIComponent(targetTestMatch[2]));
+        return;
+      }
+
+      const targetConfirmMatch = pathname.match(/^\/printer-targets\/([^/]+)\/([^/]+)\/confirm$/);
+      if (req.method === 'POST' && targetConfirmMatch) {
+        const context = assertAuthenticated(req, auth, adminKey());
+        const appId = decodeURIComponent(targetConfirmMatch[1]);
+        assertOwnAppOrAdmin(context, appId);
+        handleConfirmTarget(res, printerTargets, context, appId, decodeURIComponent(targetConfirmMatch[2]));
         return;
       }
 

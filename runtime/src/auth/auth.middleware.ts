@@ -31,3 +31,19 @@ export function assertAdmin(context: AuthContext): void {
     throw new PermissionDeniedError('admin');
   }
 }
+
+/**
+ * A paired app may only touch its OWN configuration; the admin key may touch anyone's.
+ *
+ * One machine can serve several applications (a till running Nerion, a back office running Kubia),
+ * and they are mutually untrusted: without this, any paired app could point another app's `receipt`
+ * target at a different printer, or delete it.
+ */
+export function assertOwnAppOrAdmin(context: AuthContext, appId: string): void {
+  if (context.isAdmin) {
+    return;
+  }
+  if (context.appId !== appId) {
+    throw new PermissionDeniedError(`configuration for "${appId}"`);
+  }
+}

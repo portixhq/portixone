@@ -10,7 +10,11 @@ export type {
   PairingRequestResult,
   PairingStatusResult,
   RuntimeMetrics,
+  PrintTarget,
+  PrinterTargetMapping,
+  PrinterTargetsView,
 } from '@portixone/protocol';
+export { PRINT_TARGETS } from '@portixone/protocol';
 
 export interface PortixClientOptions {
   apiKey: string;

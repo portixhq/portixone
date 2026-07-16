@@ -2,6 +2,8 @@ import type { Server } from 'node:http';
 import { ConfigService } from '../config/config.service.js';
 import { LoggerService } from '../logger/logger.service.js';
 import { PrinterManager } from '../printer/printer.manager.js';
+import { PrinterTargetsService } from '../printer/printer-targets.service.js';
+import { PrinterTargetsStore } from '../printer/printer-targets.store.js';
 import { QueueStore } from '../queue/queue.store.js';
 import { QueueWorker } from '../queue/queue.worker.js';
 import { QueueService } from '../queue/queue.service.js';
@@ -35,6 +37,10 @@ export async function bootstrap(): Promise<RuntimeContext> {
   });
 
   const printerManager = new PrinterManager(config, logger);
+  // The legacy global defaultPrinter is passed in as the `receipt` fallback, so installs configured
+  // before targets existed keep printing after an update instead of every one of them breaking at
+  // the moment targets shipped.
+  const printerTargets = new PrinterTargetsService(new PrinterTargetsStore(), config.defaultPrinter);
   const queueStore = new QueueStore();
   const queueWorker = new QueueWorker(printerManager, logger);
   const queueService = new QueueService(queueStore, queueWorker, logger);
@@ -59,7 +65,7 @@ export async function bootstrap(): Promise<RuntimeContext> {
     applicationId: config.applicationId,
   });
 
-  const server = createApiServer({ configService, logger, queueService, printerManager, pairingService, metricsService, licenseService });
+  const server = createApiServer({ configService, logger, queueService, printerManager, pairingService, metricsService, licenseService, printerTargets });
   // A second, stateless AuthService instance (it only wraps pairingService,
   // already shared) — kept separate from createApiServer's own so the
   // WebSocket upgrade check doesn't require reshaping that function's

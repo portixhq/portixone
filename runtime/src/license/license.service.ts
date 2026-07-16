@@ -19,6 +19,9 @@ export interface LicenseServiceOptions {
   keyring?: RuntimePublicKeyring;
   /** Injectable clock for deterministic grace tests. */
   now?: () => number;
+  /** Injectable state paths so parallel test files don't fight over one cwd-fixed file. */
+  licenseFilePath?: string;
+  clockFilePath?: string;
 }
 
 /**
@@ -100,7 +103,7 @@ export function derivePosture(
  * a dependency of the print/queue/printer layer (frozen by license.architecture.test.ts).
  */
 export class LicenseService {
-  private readonly store = new LicenseStore();
+  private readonly store: LicenseStore;
   private readonly clock: ClockMonitor;
   private readonly keyring: RuntimePublicKeyring;
   private readonly now: () => number;
@@ -117,7 +120,8 @@ export class LicenseService {
   ) {
     this.applicationId = options.applicationId;
     this.now = options.now ?? Date.now;
-    this.clock = new ClockMonitor(logger);
+    this.store = new LicenseStore(options.licenseFilePath);
+    this.clock = new ClockMonitor(logger, options.clockFilePath);
     if (options.keyring) {
       this.keyring = options.keyring;
     } else {

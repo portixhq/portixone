@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { rmSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { beforeEach, test } from 'node:test';
 import { HeartbeatService } from './heartbeat.service.js';
@@ -13,9 +14,16 @@ const silentLogger = {
   error() {},
 } as unknown as ConstructorParameters<typeof LicenseService>[0];
 
+// A temp dir per test FILE. These stores are otherwise pinned to the process cwd, and node --test
+// runs files in parallel, so they would quietly overwrite each other's state — passing alone and
+// failing together, or passing together by luck.
+const TMP = mkdtempSync(join(tmpdir(), 'portix-hb-'));
+const LICENSE_FILE = join(TMP, 'license.json');
+const CLOCK_FILE = join(TMP, 'clock.json');
+
 beforeEach(() => {
-  for (const f of ['license.json', 'clock.json']) {
-    rmSync(join(process.cwd(), '.data', f), { force: true });
+  for (const f of [LICENSE_FILE, CLOCK_FILE]) {
+    rmSync(f, { force: true });
   }
 });
 
@@ -24,6 +32,8 @@ function newLicense(): LicenseService {
     keyring: DEVELOPMENT_KEYRING,
     applicationId: 'app_demo_abc123',
     now: () => Date.now(),
+    licenseFilePath: LICENSE_FILE,
+    clockFilePath: CLOCK_FILE,
   });
 }
 

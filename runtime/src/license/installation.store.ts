@@ -15,9 +15,12 @@ export interface InstallationIdentity {
 }
 
 export class InstallationStore {
-  private readonly storage = new StorageRepository<InstallationIdentity>(
-    join(process.cwd(), '.data', 'installation.json'),
-  );
+  private readonly storage: StorageRepository<InstallationIdentity>;
+
+  /** `filePath` is injectable so parallel test files don't silently fight over one cwd-fixed file. */
+  constructor(filePath: string = join(process.cwd(), '.data', 'installation.json')) {
+    this.storage = new StorageRepository<InstallationIdentity>(filePath);
+  }
 
   read(): InstallationIdentity | undefined {
     return this.storage.read();

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { rmSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { beforeEach, test } from 'node:test';
 import { distributionBranding } from '@portixone/shared';
@@ -14,13 +15,17 @@ const silentLogger = {
   error() {},
 } as unknown as ConstructorParameters<typeof LicenseService>[0];
 
-const INSTALLATION_FILE = join(process.cwd(), '.data', 'installation.json');
+// A temp dir per test FILE, since these stores are otherwise pinned to the process cwd and
+// node --test runs files in parallel.
+const TMP = mkdtempSync(join(tmpdir(), 'portix-inst-'));
+const INSTALLATION_FILE = join(TMP, 'installation.json');
+const LICENSE_FILE = join(TMP, 'license.json');
+const CLOCK_FILE = join(TMP, 'clock.json');
 
-/** Each test starts with no persisted Installation Identity — the store path is cwd-fixed. */
+/** Each test starts with no persisted Installation Identity. */
 beforeEach(() => {
-  rmSync(INSTALLATION_FILE, { force: true });
-  for (const f of ['license.json', 'clock.json']) {
-    rmSync(join(process.cwd(), '.data', f), { force: true });
+  for (const f of [INSTALLATION_FILE, LICENSE_FILE, CLOCK_FILE]) {
+    rmSync(f, { force: true });
   }
 });
 
@@ -29,7 +34,12 @@ function okResponse(body: unknown) {
 }
 
 function newLicense(): LicenseService {
-  return new LicenseService(silentLogger, { keyring: DEVELOPMENT_KEYRING, now: () => Date.now() });
+  return new LicenseService(silentLogger, {
+    keyring: DEVELOPMENT_KEYRING,
+    now: () => Date.now(),
+    licenseFilePath: LICENSE_FILE,
+    clockFilePath: CLOCK_FILE,
+  });
 }
 
 test('distributionBranding keeps Portix visibly present without full white-label', () => {
@@ -40,6 +50,7 @@ test('distributionBranding keeps Portix visibly present without full white-label
 test('inert for a plain dev runtime (no token / no registration URL)', async () => {
   let called = false;
   const service = new InstallationService(silentLogger, newLicense(), {
+    identityFilePath: INSTALLATION_FILE,
     fetchImpl: async () => {
       called = true;
       return okResponse({});
@@ -54,6 +65,7 @@ test('exchanges a one-time token for an Installation Identity and applies the fi
   const license = newLicense();
   const firstToken = signLicenseToken(makeClaims({ applicationStatus: 'production_active' }));
   const service = new InstallationService(silentLogger, license, {
+    identityFilePath: INSTALLATION_FILE,
     installationToken: 'inst_once_abc',
     registrationUrl: 'https://portal.example.com/installations',
     fetchImpl: async () =>
@@ -74,6 +86,7 @@ test('exchanges a one-time token for an Installation Identity and applies the fi
 test('is idempotent — a second call never burns another token', async () => {
   let calls = 0;
   const service = new InstallationService(silentLogger, newLicense(), {
+    identityFilePath: INSTALLATION_FILE,
     installationToken: 'inst_once_abc',
     registrationUrl: 'https://portal.example.com/installations',
     fetchImpl: async () => {
@@ -88,6 +101,7 @@ test('is idempotent — a second call never burns another token', async () => {
 
 test('a failed exchange is swallowed and leaves no identity (retried next boot)', async () => {
   const service = new InstallationService(silentLogger, newLicense(), {
+    identityFilePath: INSTALLATION_FILE,
     installationToken: 'inst_once_abc',
     registrationUrl: 'https://portal.example.com/installations',
     fetchImpl: async () => {

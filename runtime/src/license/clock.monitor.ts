@@ -30,14 +30,17 @@ const ROLLBACK_THRESHOLD_MS = 5 * 60 * 1000;
 const LOCAL_PERSIST_STEP_MS = 60 * 60 * 1000; // persist at most ~once per hour of advance
 
 export class ClockMonitor {
-  private readonly storage = new StorageRepository<ClockWatermarks>(
-    join(process.cwd(), '.data', 'clock.json'),
-  );
+  private readonly storage: StorageRepository<ClockWatermarks>;
   private marks: ClockWatermarks;
   /** The local watermark value last written to disk — throttles persistence (see LOCAL_PERSIST_STEP_MS). */
   private persistedLocalMs: number;
 
-  constructor(private readonly logger: LoggerService) {
+  /** `filePath` is injectable so parallel test files don't silently fight over one cwd-fixed file. */
+  constructor(
+    private readonly logger: LoggerService,
+    filePath: string = join(process.cwd(), '.data', 'clock.json'),
+  ) {
+    this.storage = new StorageRepository<ClockWatermarks>(filePath);
     let existing: ClockWatermarks | undefined;
     try {
       existing = this.storage.read();

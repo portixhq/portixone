@@ -113,6 +113,32 @@ export class PrinterNotReadyError extends PortixError {
   }
 }
 
+/**
+ * The app printed to a logical target this installation has never had a printer assigned to.
+ *
+ * Deliberately raised at enqueue time, not at print time: this is a configuration gap the Runtime
+ * knows about immediately, so the caller gets an error it can act on ("run setup for this target")
+ * instead of a job that is accepted and then quietly fails somewhere in the queue.
+ */
+export class TargetNotConfiguredError extends PortixError {
+  constructor(target: string) {
+    super(
+      `No printer is configured for the "${target}" target on this machine. Run printer setup to assign one.`,
+      'TARGET_NOT_CONFIGURED',
+    );
+  }
+}
+
+/** The printer a target was bound to no longer exists — uninstalled or renamed. Needs reconfiguration, not a silent fallback to some other printer. */
+export class MappingInvalidError extends PortixError {
+  constructor(target: string, printerName: string) {
+    super(
+      `The "${target}" target is assigned to "${printerName}", which is no longer installed on this machine. Reassign it.`,
+      'MAPPING_INVALID',
+    );
+  }
+}
+
 export class InvalidDriverConfigError extends PortixError {
   constructor(details: string) {
     super(`Printer driver is not configured correctly: ${details}`, 'INVALID_DRIVER_CONFIG');

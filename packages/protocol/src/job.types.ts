@@ -1,3 +1,5 @@
+import type { PrintTarget } from './printer-target.types.js';
+
 /**
  * Device capabilities per the PortixOne capability model. Only PRINT is
  * implemented today — the rest are reserved names for future device types
@@ -15,6 +17,19 @@ export type JobStatus = 'pending' | 'printing' | 'completed' | 'failed' | 'cance
 
 export interface PrintJob {
   content: string;
+  /**
+   * The logical destination to print to (`receipt`, `kitchen`, …). The Runtime resolves it to a
+   * physical printer using this installation's own configuration, so the application never needs to
+   * know what the printer is called on the customer's machine. This is the intended way to print.
+   */
+  target?: PrintTarget;
+  /**
+   * The physical printer name, bypassing target resolution.
+   *
+   * ADVANCED / COMPATIBILITY. It requires the caller to know a Windows printer name on someone
+   * else's machine, which doesn't survive being distributed to more than one customer. Prefer
+   * `target`.
+   */
   printerName?: string;
   copies?: number;
 }
@@ -37,6 +52,9 @@ export interface JobOwner {
 export interface JobRecord {
   jobId: string;
   status: JobStatus;
+  /** The logical target requested, when the caller used one. */
+  target?: PrintTarget;
+  /** The physical printer the job actually went to — resolved from `target` when one was used. */
   printerName?: string;
   copies?: number;
   message?: string;

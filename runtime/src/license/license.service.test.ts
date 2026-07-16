@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { rmSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { beforeEach, test } from 'node:test';
 import { GRACE, type LicenseTokenClaims, type RuntimeLicensePosture } from '@portixone/protocol';
@@ -16,15 +17,26 @@ const silentLogger = {
   error() {},
 } as unknown as ConstructorParameters<typeof LicenseService>[0];
 
-/** State files are cwd-fixed; start each test clean so persisted revocation/clock don't leak. */
+// A temp dir per test FILE, since these stores are otherwise pinned to the process cwd and
+// node --test runs files in parallel.
+const TMP = mkdtempSync(join(tmpdir(), 'portix-lic-'));
+const LICENSE_FILE = join(TMP, 'license.json');
+const CLOCK_FILE = join(TMP, 'clock.json');
+
+/** Start each test clean so a persisted revocation or clock watermark doesn't leak into the next. */
 beforeEach(() => {
-  for (const f of ['license.json', 'clock.json']) {
-    rmSync(join(process.cwd(), '.data', f), { force: true });
+  for (const f of [LICENSE_FILE, CLOCK_FILE]) {
+    rmSync(f, { force: true });
   }
 });
 
 function newService(opts: { applicationId?: string; now?: () => number } = {}): LicenseService {
-  return new LicenseService(silentLogger, { keyring: DEVELOPMENT_KEYRING, ...opts });
+  return new LicenseService(silentLogger, {
+    keyring: DEVELOPMENT_KEYRING,
+    licenseFilePath: LICENSE_FILE,
+    clockFilePath: CLOCK_FILE,
+    ...opts,
+  });
 }
 
 function claimsWith(status: LicenseTokenClaims['applicationStatus'], expMs: number): LicenseTokenClaims {

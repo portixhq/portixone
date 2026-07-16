@@ -1,5 +1,5 @@
-import type { PrinterInfo, PrintJobInput } from '@portixone/protocol';
-import { InvalidDriverConfigError, PrinterNotFoundError } from '@portixone/shared';
+import type { PrinterInfo, PrintJobInput, PrintTarget } from '@portixone/protocol';
+import { InvalidDriverConfigError, MappingInvalidError, PrinterNotFoundError } from '@portixone/shared';
 import { detectWindowsPrinters } from './detectors/windows.detector.js';
 import { detectLanPrinters } from './detectors/lan.detector.js';
 import { MockPrinterDriver } from './drivers/mock.driver.js';
@@ -63,7 +63,7 @@ export class PrinterManager {
 
   async print(job: PrintJobInput): Promise<void> {
     if (this.driverType === 'windows-spooler') {
-      await this.assertPrinterReady(job.printerName ?? this.defaultPrinter);
+      await this.assertPrinterReady(job.printerName ?? this.defaultPrinter, job.target);
     }
     await this.driver.print(job);
   }
@@ -74,7 +74,7 @@ export class PrinterManager {
    * job — so this is the only way to catch those conditions up front instead
    * of a job silently "succeeding" with nothing coming out.
    */
-  private async assertPrinterReady(name: string | undefined): Promise<void> {
+  private async assertPrinterReady(name: string | undefined, target?: PrintTarget): Promise<void> {
     if (!name) {
       return;
     }
@@ -84,7 +84,11 @@ export class PrinterManager {
     }
     const printer = printers.find((candidate) => candidate.name === name);
     if (!printer) {
-      throw new PrinterNotFoundError(name);
+      // A missing printer means something different depending on how we got here. If the caller named
+      // the printer, they named one that isn't there. If we resolved it from a target, the app did
+      // nothing wrong — this installation's mapping went stale (printer uninstalled or renamed), and
+      // the fix is to reassign the target, not to change the app.
+      throw target ? new MappingInvalidError(target, name) : new PrinterNotFoundError(name);
     }
     assertPrinterStatusReady(printer.status, name, this.logger);
   }

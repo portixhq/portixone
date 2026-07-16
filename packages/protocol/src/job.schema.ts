@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { PRINT_TARGETS, type PrintTarget } from './printer-target.types.js';
 
 /**
  * Upper bounds on a single print job. A real receipt is a few KB of text and
@@ -13,6 +14,9 @@ export const MAX_COPIES = 100;
 
 export const printJobSchema = z.object({
   content: z.string().min(1).max(MAX_CONTENT_LENGTH),
+  // Cast keeps zod's tuple signature happy while preserving PrintTarget through to PrintJobInput —
+  // a plain `string` here would silently widen the type everywhere downstream.
+  target: z.enum([...PRINT_TARGETS] as [PrintTarget, ...PrintTarget[]]).optional(),
   printerName: z.string().min(1).optional(),
   copies: z.number().int().positive().max(MAX_COPIES).optional(),
 });
