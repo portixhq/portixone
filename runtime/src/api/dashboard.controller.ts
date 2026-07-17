@@ -1,4 +1,9 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import {
+  TARGETS_SECTION_HTML,
+  TARGETS_SECTION_SCRIPT,
+  TARGETS_SECTION_STYLES,
+} from './dashboard/targets.section.js';
 import { readJsonBody } from '../protocol/protocol.adapter.js';
 import type { ConfigService } from '../config/config.service.js';
 
@@ -29,6 +34,12 @@ export async function handleSetDefaultPrinter(
 // window" + "local dashboard" in ROADMAP.md. Fonts are embedded as base64 and
 // the wordmark as inline SVG so the page carries the same brand identity as
 // portix.dev while staying fully offline and dependency-free.
+/**
+ * The page is composed from sections rather than written as one ever-growing template. Each section
+ * owns its own markup, styles and behaviour together (split by feature, not by css/html/js — that
+ * split moves lines without reducing coupling). It is still a single self-contained document with
+ * no build step, which is the property worth protecting: the Runtime ships as plain compiled JS.
+ */
 const DASHBOARD_HTML = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -239,6 +250,7 @@ const DASHBOARD_HTML = `<!DOCTYPE html>
   .job-time { color: var(--muted); flex-shrink: 0; }
 
   .muted { color: var(--muted); font-size: 0.88rem; }
+${TARGETS_SECTION_STYLES}
 </style>
 </head>
 <body>
@@ -293,6 +305,8 @@ const DASHBOARD_HTML = `<!DOCTYPE html>
     <p class="hint">Prints a sample receipt.</p>
     <div id="printTestResult" class="result"></div>
   </section>
+
+${TARGETS_SECTION_HTML}
 
   <section>
     <h2>Recent jobs</h2>
@@ -478,8 +492,11 @@ document.getElementById('printTestBtn').onclick = async () => {
   }
 };
 
+${TARGETS_SECTION_SCRIPT}
+
 refreshStatus().then(refreshPrinters);
 refreshJobs();
+refreshTargets();
 </script>
 </body>
 </html>

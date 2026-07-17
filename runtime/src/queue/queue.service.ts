@@ -76,6 +76,10 @@ export class QueueService {
       record: {
         jobId,
         status: 'pending',
+        // Record BOTH: the target the caller asked for and the printer it resolved to on this
+        // machine. Keeping only the printer would lose the reason a job went where it went, which
+        // is the first question anyone asks when a ticket comes out of the wrong device.
+        target: job.target,
         printerName: job.printerName,
         copies: job.copies,
         createdAt: now,

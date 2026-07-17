@@ -106,6 +106,33 @@ test('an app cannot resolve another app\'s target configuration', () => {
   );
 });
 
+test('the resolved job keeps BOTH the target asked for and the printer it resolved to', () => {
+  // Losing the target would lose the reason a job went where it went — the first question anyone
+  // asks when a ticket comes out of the wrong device. JobRecord advertises `target`; the queue must
+  // actually carry it (it didn't, and only printing through the real dashboard surfaced that).
+  const targets = newService();
+  targets.set({ appId: 'nerion', origin: 'https://app.nerion.mx' }, 'kitchen', 'XP-80C');
+  const job = resolveJobPrinter({ content: 'ticket', target: 'kitchen' }, targets, nerionCtx);
+  assert.equal(job.target, 'kitchen');
+  assert.equal(job.printerName, 'XP-80C');
+});
+
+// ── Admin acting on a real app's origin ─────────────────────────────────────────────────────
+
+test('the admin key can act on an app\'s real origin, not just the originless bucket', () => {
+  // The local dashboard is admin and has no pairing, so it has no origin of its own. If admin
+  // operations fell back to the `*` bucket, the dashboard would silently test and delete the wrong
+  // mapping — appearing to work while touching nothing the app actually uses.
+  const targets = newService();
+  targets.set({ appId: 'nerion', origin: 'https://app.nerion.mx' }, 'receipt', 'EPSON TM-T20III');
+
+  // The originless bucket is genuinely empty…
+  assert.throws(() => targets.resolve({ appId: 'nerion' }, 'receipt'), /No printer is configured/);
+  // …while the app's real origin is what the dashboard must reach.
+  assert.equal(targets.resolve({ appId: 'nerion', origin: 'https://app.nerion.mx' }, 'receipt'), 'EPSON TM-T20III');
+  assert.equal(targets.remove({ appId: 'nerion', origin: 'https://app.nerion.mx' }, 'receipt'), true);
+});
+
 // ── Cross-app authorization ─────────────────────────────────────────────────────────────────
 
 test('an app cannot configure another app\'s targets; admin can configure anyone\'s', () => {

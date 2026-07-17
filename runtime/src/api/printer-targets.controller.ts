@@ -3,7 +3,7 @@ import { PRINT_TARGETS, type PrintTarget } from '@portixone/protocol';
 import { InvalidRequestError, PrinterNotFoundError } from '@portixone/shared';
 import { readJsonBody } from '../protocol/protocol.adapter.js';
 import type { PrinterManager } from '../printer/printer.manager.js';
-import type { PrinterTargetsService } from '../printer/printer-targets.service.js';
+import type { PrinterTargetsService, TargetScope } from '../printer/printer-targets.service.js';
 import type { QueueService } from '../queue/queue.service.js';
 import type { AuthContext } from '../auth/auth.service.js';
 import { scopeFor } from './print.controller.js';
@@ -11,6 +11,21 @@ import { scopeFor } from './print.controller.js';
 function json(res: ServerResponse, status: number, body: unknown): void {
   res.writeHead(status, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify(body));
+}
+
+/**
+ * Which (appId, origin) a target operation acts on.
+ *
+ * A paired app is pinned to its own origin and cannot ask for another — that's the isolation
+ * boundary. The admin key has no pairing and therefore no origin of its own, so it MUST be able to
+ * name the origin it's acting on: without this, every admin operation would silently fall into the
+ * originless `*` bucket and the local dashboard could never test or remove a real app's target.
+ */
+function scopeForTarget(context: AuthContext, appId: string, requestedOrigin?: string | null): TargetScope {
+  if (context.isAdmin) {
+    return { appId, origin: requestedOrigin ?? undefined };
+  }
+  return { appId, origin: scopeFor(context).origin };
 }
 
 export function assertPrintTarget(value: string): PrintTarget {
@@ -67,10 +82,9 @@ export async function handleSetTarget(
     throw new PrinterNotFoundError(body.printerName);
   }
 
-  // An admin configuring on behalf of an app supplies the origin; a paired app is pinned to its own.
-  const origin = context.isAdmin && typeof body.origin === 'string' ? body.origin : scopeFor(context).origin;
-  const mapping = printerTargets.set({ appId, origin }, target, body.printerName);
-  json(res, 200, { appId, origin: origin ?? '*', target, mapping });
+  const scope = scopeForTarget(context, appId, typeof body.origin === 'string' ? body.origin : undefined);
+  const mapping = printerTargets.set(scope, target, body.printerName);
+  json(res, 200, { appId, origin: scope.origin ?? '*', target, mapping });
 }
 
 export function handleDeleteTarget(
@@ -79,9 +93,10 @@ export function handleDeleteTarget(
   context: AuthContext,
   appId: string,
   targetName: string,
+  requestedOrigin?: string | null,
 ): void {
   const target = assertPrintTarget(targetName);
-  const removed = printerTargets.remove({ appId, origin: scopeFor(context).origin }, target);
+  const removed = printerTargets.remove(scopeForTarget(context, appId, requestedOrigin), target);
   json(res, removed ? 200 : 404, { appId, target, removed });
 }
 
@@ -97,9 +112,10 @@ export async function handleTestTarget(
   context: AuthContext,
   appId: string,
   targetName: string,
+  requestedOrigin?: string | null,
 ): Promise<void> {
   const target = assertPrintTarget(targetName);
-  const scope = { appId, origin: scopeFor(context).origin };
+  const scope = scopeForTarget(context, appId, requestedOrigin);
   const printerName = printerTargets.resolve(scope, target);
   const result = queueService.enqueue({
     content: [
@@ -123,8 +139,9 @@ export function handleConfirmTarget(
   context: AuthContext,
   appId: string,
   targetName: string,
+  requestedOrigin?: string | null,
 ): void {
   const target = assertPrintTarget(targetName);
-  const mapping = printerTargets.markVerified({ appId, origin: scopeFor(context).origin }, target);
+  const mapping = printerTargets.markVerified(scopeForTarget(context, appId, requestedOrigin), target);
   json(res, mapping ? 200 : 404, { appId, target, mapping });
 }

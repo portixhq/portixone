@@ -181,7 +181,7 @@ export function createApiServer({
           return;
         }
         if (req.method === 'DELETE') {
-          handleDeleteTarget(res, printerTargets, context, appId, target);
+          handleDeleteTarget(res, printerTargets, context, appId, target, url.searchParams.get('origin'));
           return;
         }
       }
@@ -192,7 +192,15 @@ export function createApiServer({
         const appId = decodeURIComponent(targetTestMatch[1]);
         assertOwnAppOrAdmin(context, appId);
         assertPermission(context, 'print');
-        await handleTestTarget(res, printerTargets, queueService, context, appId, decodeURIComponent(targetTestMatch[2]));
+        await handleTestTarget(
+          res,
+          printerTargets,
+          queueService,
+          context,
+          appId,
+          decodeURIComponent(targetTestMatch[2]),
+          url.searchParams.get('origin'),
+        );
         return;
       }
 
@@ -201,7 +209,14 @@ export function createApiServer({
         const context = assertAuthenticated(req, auth, adminKey());
         const appId = decodeURIComponent(targetConfirmMatch[1]);
         assertOwnAppOrAdmin(context, appId);
-        handleConfirmTarget(res, printerTargets, context, appId, decodeURIComponent(targetConfirmMatch[2]));
+        handleConfirmTarget(
+          res,
+          printerTargets,
+          context,
+          appId,
+          decodeURIComponent(targetConfirmMatch[2]),
+          url.searchParams.get('origin'),
+        );
         return;
       }
 
