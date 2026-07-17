@@ -1,4 +1,5 @@
 import type { PrintTarget } from './printer-target.types.js';
+import type { RuntimeCapabilities } from './connection.types.js';
 
 /**
  * Device capabilities per the PortixOne capability model. Only PRINT is
@@ -80,6 +81,12 @@ export interface RuntimeStatus {
   runtimeVersion: string;
   /** The wire-contract version (`PROTOCOL_VERSION`) — what SDK and Runtime negotiate on, not a product version. */
   protocolVersion: string;
+  /**
+   * What this Runtime build supports. Lets an SDK negotiate features instead of inferring them from
+   * a version number — a Runtime predating printer targets simply reports `printerTargets: false`.
+   * Optional so a response from an older Runtime, which has no such field, still parses.
+   */
+  capabilities?: RuntimeCapabilities;
   defaultPrinter?: string;
   /** True when the Runtime's printer driver is `mock` — jobs are accepted and tracked but never reach real hardware. */
   simulated: boolean;

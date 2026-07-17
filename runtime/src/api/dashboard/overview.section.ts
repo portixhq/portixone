@@ -98,7 +98,7 @@ async function refreshOverview() {
 
     const [apps, targets] = await Promise.all([
       api('/pairings').catch(function () { return []; }),
-      api('/printer-targets').catch(function () { return { configurations: [] }; }),
+      api('/printer-targets?scope=all').catch(function () { return { configurations: [] }; }),
     ]);
     const configs = (targets && targets.configurations) || [];
     renderAttention(apps || [], configs);

@@ -13,13 +13,37 @@ export type {
   PrintTarget,
   PrinterTargetMapping,
   PrinterTargetsView,
+  ConnectionState,
+  ConnectionStatus,
+  RuntimeReachability,
+  PairingPhase,
+  TargetReadiness,
+  RuntimeCapabilities,
 } from '@portixone/protocol';
 export { PRINT_TARGETS } from '@portixone/protocol';
+
+/** Options for `connect()` / `getConnectionState()` / `isReady()`. */
+export interface ConnectOptions {
+  /**
+   * The target this application needs in order to work. When set, `ready` means specifically that
+   * this target is configured — otherwise `ready` only means reachable and authorized.
+   */
+  expectTarget?: import('@portixone/protocol').PrintTarget;
+  /** Per-request timeout in ms. Default 5000. */
+  timeoutMs?: number;
+  /**
+   * How long to wait for a pairing approval before reporting `pairing_pending`. Default 2500 —
+   * enough for the loopback auto-approval, deliberately not enough to block on a human.
+   */
+  pairingWaitMs?: number;
+}
 
 export interface PortixClientOptions {
   apiKey: string;
   host?: string;
   port?: number;
+  /** Per-request timeout in ms. Defaults to 5000 — the Runtime is local, so seconds are generous. */
+  timeoutMs?: number;
 }
 
 export interface PortixOptions {

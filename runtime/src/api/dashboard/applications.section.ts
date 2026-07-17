@@ -57,7 +57,7 @@ async function refreshApplications() {
   try {
     const [apps, targets] = await Promise.all([
       api('/pairings'),
-      api('/printer-targets').catch(function () { return { configurations: [] }; }),
+      api('/printer-targets?scope=all').catch(function () { return { configurations: [] }; }),
     ]);
     const configs = (targets && targets.configurations) || [];
     if (!apps || apps.length === 0) {

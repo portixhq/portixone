@@ -61,7 +61,7 @@ async function refreshTargets() {
   try {
     const [pairings, targetsResponse, printers] = await Promise.all([
       api('/pairings').catch(function () { return []; }),
-      api('/printer-targets').catch(function () { return { configurations: [] }; }),
+      api('/printer-targets?scope=all').catch(function () { return { configurations: [] }; }),
       api('/printers').catch(function () { return []; }),
     ]);
     availablePrinters = printers || [];

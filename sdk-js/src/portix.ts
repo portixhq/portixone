@@ -1,9 +1,14 @@
+import { PROTOCOL_VERSION } from '@portixone/protocol';
 import { ClientAdapter, RuntimeUnreachableError } from './client.adapter.js';
+import { buildConnectionState, isProtocolCompatible } from './connection-state.js';
 import { PortixEventBus } from './event-bus.js';
 import { RuntimeSocket } from './runtime-socket.js';
 import { renderMockReceipt } from './mock-preview.js';
 import type {
+  ConnectionState,
+  ConnectOptions,
   JobRecord,
+  PairingPhase,
   PairingRequestResult,
   PortixEvent,
   PortixEventHandler,
@@ -13,13 +18,23 @@ import type {
   PrintOptions,
   PrintResult,
   PrintTarget,
+  RuntimeCapabilities,
   RuntimeMetrics,
   RuntimeStatusResult,
+  TargetReadiness,
 } from './types.js';
 
 const DEFAULT_LOCAL_API_KEY = 'dev-local-key';
 const MOCK_VERSION = 'mock';
 const PAIRING_POLL_INTERVAL_MS = 1500;
+/**
+ * How long `connect()` waits for an approval before reporting `pairing_pending`.
+ *
+ * Sized for the loopback auto-approval, which lands before the first poll — not for a human, who
+ * may take minutes or never arrive. Waiting on a person here is what made `pairing_pending`
+ * impossible to represent: the promise just never settled.
+ */
+const PAIRING_WAIT_MS = 2500;
 const TOKEN_STORAGE_PREFIX = 'portix:token:';
 const DOWNLOAD_URL = 'https://portix.one/download';
 
@@ -66,65 +81,183 @@ export class Portix {
   private pairingTimer?: ReturnType<typeof setInterval>;
   private readonly events = new PortixEventBus();
   private readonly mode: 'runtime' | 'mock';
+  private capabilities?: RuntimeCapabilities;
+  private runtimeVersion?: string;
 
   constructor(private readonly options: PortixOptions = {}) {
     this.mode = options.mode ?? 'runtime';
   }
 
   /**
-   * Verifies the runtime is reachable and, if this app isn't authorized yet,
-   * pairs automatically — no separate `.pair()` call needed for the common
-   * case. Requires `tenant`/`appId` in the constructor so the pairing
-   * request can identify who's asking; skipped entirely if you passed an
-   * explicit `apiKey` (that's a deliberate credential, not something to
-   * silently replace). A previously-approved pairing is remembered (browser
-   * `localStorage` only, see `loadPersistedToken`) so this only blocks on a
-   * human once per app/tenant, not on every `connect()`.
+   * Establishes a connection and REPORTS WHAT HAPPENED, rather than throwing and leaving the caller
+   * to interpret an exception.
+   *
+   * ── Behaviour change in this version, deliberate ──────────────────────────────────────────────
+   * This used to reject when the Runtime was missing, when there was no usable credential, or when
+   * a pairing wasn't approved in time — so an application had to catch technical errors and guess
+   * which screen to show. Those are all normal operating conditions and are now returned as state:
+   * `runtime_unreachable`, `pairing_required`, `pairing_pending`, `target_not_configured`, `ready`.
+   * Exceptions are kept for what is genuinely unexpected (a corrupt response, a broken protocol).
+   *
+   * It also no longer blocks for minutes waiting for a human to click Approve. That made
+   * `pairing_pending` unrepresentable: the promise simply didn't settle. It now waits only long
+   * enough for the loopback auto-approval to land, then hands back `pairing_pending` so the
+   * application can render "approve this in the tray" and re-check when it wants.
+   *
+   * And it no longer opens the download page by itself. The application knows the state now and
+   * decides — a library that opens tabs during a status check is a surprise, not a feature.
    */
-  async connect(): Promise<void> {
+  async connect(options: ConnectOptions = {}): Promise<ConnectionState> {
     if (this.mode === 'mock') {
-      return;
+      return buildConnectionState({
+        runtime: 'connected',
+        pairing: 'not_required',
+        targets: options.expectTarget ? { [options.expectTarget]: 'configured' } : {},
+        runtimeVersion: MOCK_VERSION,
+        detail: 'Mock mode — no Runtime and no printer involved.',
+      });
     }
+
     const { tenant, appId } = this.options;
     const persistedToken = tenant && appId ? loadPersistedToken(tenant, appId) : undefined;
     const adapter = new ClientAdapter({
       apiKey: this.options.apiKey ?? persistedToken ?? DEFAULT_LOCAL_API_KEY,
       host: this.options.host,
       port: this.options.port,
+      timeoutMs: options.timeoutMs,
     });
+
+    let health: RuntimeStatusResult;
     try {
-      await adapter.getStatus();
+      health = await adapter.getStatus();
     } catch (error) {
       if (error instanceof RuntimeUnreachableError) {
-        // Best-effort: browsers only let `window.open()` bypass the popup
-        // blocker when it's a direct result of a user gesture (e.g. this
-        // `connect()` call happening inside a button's click handler) —
-        // silently does nothing otherwise, which is why the download URL is
-        // always in the thrown message too, not just this side effect.
-        if (typeof window !== 'undefined') {
-          window.open(DOWNLOAD_URL, '_blank');
-        }
-        // Enrich in place rather than wrapping in a plain Error, so a caller
-        // doing `instanceof RuntimeUnreachableError` still works.
-        error.message = `${error.message} Download it from ${DOWNLOAD_URL} and try again.`;
-        throw error;
+        // Cannot tell "not installed" from "installed but stopped" — a failed fetch is a failed
+        // fetch. Say only what is true and let the application offer both paths.
+        return buildConnectionState({
+          runtime: 'unreachable',
+          pairing: 'required',
+          detail: `No Runtime answered at ${this.options.host ?? '127.0.0.1'}:${this.options.port ?? 17321}. It may not be installed, or not running. ${DOWNLOAD_URL}`,
+        });
       }
-      throw error;
+      throw error; // genuinely unexpected — not an operating condition
     }
-    this.adapter = adapter;
 
+    this.capabilities = health.capabilities;
+    this.runtimeVersion = health.runtimeVersion ?? health.version;
+    if (!isProtocolCompatible(health.protocolVersion)) {
+      return buildConnectionState({
+        runtime: 'incompatible',
+        pairing: 'required',
+        runtimeVersion: this.runtimeVersion,
+        protocolVersion: health.protocolVersion,
+        detail: `This Runtime speaks protocol ${health.protocolVersion}; this SDK speaks ${PROTOCOL_VERSION}. Update whichever is older.`,
+      });
+    }
+
+    const pairing = await this.establishPairing(adapter, options);
+    if (pairing !== 'approved' && pairing !== 'not_required') {
+      return buildConnectionState({
+        runtime: 'connected',
+        pairing,
+        runtimeVersion: this.runtimeVersion,
+        protocolVersion: health.protocolVersion,
+        detail:
+          pairing === 'pending'
+            ? 'Waiting for someone to approve this application in the Portix tray.'
+            : pairing === 'required'
+              ? 'No usable credential. Pass { tenant, appId } so this can pair, or { apiKey } if you already have one.'
+              : 'The pairing request was not approved.',
+      });
+    }
+
+    this.adapter = adapter;
+    return buildConnectionState({
+      runtime: 'connected',
+      pairing,
+      targets: await this.readTargets(adapter),
+      expectedTarget: options.expectTarget,
+      runtimeVersion: this.runtimeVersion,
+      protocolVersion: health.protocolVersion,
+    });
+  }
+
+  /** Resolves how this app is authorized, without ever blocking on a human for more than a moment. */
+  private async establishPairing(adapter: ClientAdapter, options: ConnectOptions): Promise<PairingPhase> {
+    const { tenant, appId } = this.options;
     if (this.options.apiKey) {
-      return;
+      return 'not_required'; // a deliberate credential — never silently replaced
     }
     if (await this.isAuthorized(adapter)) {
-      return;
+      return 'approved'; // a remembered pairing still works
     }
     if (!tenant || !appId) {
-      throw new Error(
-        'portix.connect() reached the Runtime but has no valid credential — pass { tenant, appId } to `new Portix(...)` so it can pair automatically, or pass { apiKey } if you already have one.',
-      );
+      return 'required';
     }
-    await this.autoPair(adapter, tenant, appId);
+    return this.requestPairing(adapter, tenant, appId, options.pairingWaitMs ?? PAIRING_WAIT_MS);
+  }
+
+  /**
+   * Requests pairing and waits only briefly. A loopback origin auto-approves before the first poll,
+   * so this settles instantly in development; a public origin needs a human, and that is reported
+   * rather than waited on.
+   */
+  private async requestPairing(
+    adapter: ClientAdapter,
+    tenant: string,
+    appId: string,
+    waitMs: number,
+  ): Promise<PairingPhase> {
+    const result = await adapter.requestPairing(tenant, appId);
+    const deadline = Date.now() + waitMs;
+    do {
+      const status = await adapter.getPairingStatus(result.code).catch(() => undefined);
+      if (status?.status === 'approved' && status.token) {
+        adapter.setCredential(status.token);
+        persistToken(tenant, appId, status.token);
+        this.events.emit('paired', { deviceId: status.deviceId, permissions: status.permissions });
+        return 'approved';
+      }
+      if (status?.status === 'expired') {
+        return 'expired';
+      }
+      if (Date.now() >= deadline) {
+        break;
+      }
+      await sleep(Math.min(PAIRING_POLL_INTERVAL_MS, Math.max(0, deadline - Date.now())));
+    } while (Date.now() < deadline);
+    return 'pending';
+  }
+
+  /** Reads this app's own target configuration. Undefined means "could not read", never "none". */
+  private async readTargets(adapter: ClientAdapter): Promise<Partial<Record<PrintTarget, TargetReadiness>> | undefined> {
+    try {
+      const view = await adapter.getPrinterTargets();
+      const targets: Partial<Record<PrintTarget, TargetReadiness>> = {};
+      for (const [target, mapping] of Object.entries(view.targets ?? {})) {
+        // A mapping whose printer vanished is configured on paper but cannot print — reporting it as
+        // configured would send the app straight into a failing job.
+        targets[target as PrintTarget] = mapping?.invalidReason ? 'not_configured' : 'configured';
+      }
+      return targets;
+    } catch {
+      return undefined;
+    }
+  }
+
+  /** Re-probes and returns the current connection state. Same contract as `connect()`. */
+  async getConnectionState(options: ConnectOptions = {}): Promise<ConnectionState> {
+    return this.connect(options);
+  }
+
+  /** True only when everything needed to print is in place. */
+  async isReady(options: ConnectOptions = {}): Promise<boolean> {
+    return (await this.connect(options)).status === 'ready';
+  }
+
+  /** What this Runtime supports — populated by `connect()`. Undefined until then, or on an older Runtime. */
+  getCapabilities(): RuntimeCapabilities | undefined {
+    return this.capabilities;
   }
 
   /** A cheap authenticated call, used only to answer "does our current credential actually work?" */
@@ -135,33 +268,6 @@ export class Portix {
     } catch {
       return false;
     }
-  }
-
-  /**
-   * Requests pairing and blocks until it's approved — instantly for a
-   * localhost origin (the runtime auto-trusts only that, not LAN/private-IP
-   * origins — see pairing.service.ts's isTrustedOrigin), or until a human
-   * approves it from the PortixOne tray's Pairing Requests menu otherwise.
-   * Distinct from the public `pair()` below, which returns the code
-   * immediately for callers (like a multi-tenant SaaS) that want to show it
-   * to a human themselves instead of waiting here.
-   */
-  private async autoPair(adapter: ClientAdapter, tenant: string, appId: string): Promise<void> {
-    const result = await adapter.requestPairing(tenant, appId);
-    const expiresAtMs = new Date(result.expiresAt).getTime();
-    while (Date.now() < expiresAtMs) {
-      await sleep(PAIRING_POLL_INTERVAL_MS);
-      const status = await adapter.getPairingStatus(result.code).catch(() => undefined);
-      if (status?.status === 'approved' && status.token) {
-        adapter.setCredential(status.token);
-        persistToken(tenant, appId, status.token);
-        this.events.emit('paired', { deviceId: status.deviceId, permissions: status.permissions });
-        return;
-      }
-    }
-    throw new Error(
-      `Pairing request for "${appId}" expired waiting for approval — open the PortixOne tray's "Pairing Requests" menu and approve it, then call connect() again.`,
-    );
   }
 
   /** Ends this SDK session: stops any pairing poll, closes the live-events socket, and drops the connection. */

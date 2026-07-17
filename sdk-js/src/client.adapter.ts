@@ -21,6 +21,13 @@ interface RequestOptions {
 }
 
 /**
+ * A request with no timeout can hang for as long as the OS lets it, which turns a stopped Runtime
+ * into an onboarding screen that spins forever instead of saying what's wrong. Every request is
+ * bounded; the Runtime is local, so seconds are generous.
+ */
+const DEFAULT_TIMEOUT_MS = 5000;
+
+/**
  * Thrown when `fetch()` itself never got a response — as opposed to a
  * response we didn't like (handled separately below). Distinct from a
  * generic `Error` so callers (see `Portix.connect()`) can reliably tell
@@ -37,12 +44,14 @@ export class RuntimeUnreachableError extends Error {
 export class ClientAdapter {
   private readonly baseUrl: string;
   private apiKey: string;
+  private readonly timeoutMs: number;
 
   constructor(options: PortixClientOptions) {
     const host = options.host ?? DEFAULT_RUNTIME_HOST;
     const port = options.port ?? DEFAULT_RUNTIME_PORT;
     this.baseUrl = `http://${host}:${port}`;
     this.apiKey = options.apiKey;
+    this.timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   }
 
   /** Swaps in a per-pairing scoped token once `pair()` is approved, replacing the shared admin key. */
@@ -133,6 +142,9 @@ export class ClientAdapter {
         method,
         headers,
         body: body !== undefined ? JSON.stringify(body) : undefined,
+        // A timeout aborts as RuntimeUnreachableError below, which is the truthful answer: a Runtime
+        // that doesn't respond in seconds is not reachable, whatever the reason.
+        signal: AbortSignal.timeout(this.timeoutMs),
       });
     } catch {
       throw new RuntimeUnreachableError(this.baseUrl);

@@ -12,6 +12,15 @@ export function handleHealth(res: ServerResponse, configService: ConfigService):
     version: PROTOCOL_VERSION,
     runtimeVersion: APP_VERSION,
     protocolVersion: PROTOCOL_VERSION,
+    // Declared, not inferred: an SDK asking "can I print by target here?" gets an answer instead of
+    // guessing from a version number. `licensing: true` means the layer is present — never that it
+    // gates printing, which it does not.
+    capabilities: {
+      printerTargets: true,
+      pairing: true,
+      diagnostics: true,
+      licensing: true,
+    },
     defaultPrinter: config.defaultPrinter,
     simulated: config.printerDriver === 'mock',
   };

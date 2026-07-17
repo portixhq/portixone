@@ -150,11 +150,17 @@ export function createApiServer({
         return;
       }
 
-      // A paired app reads its OWN target configuration — this is what tells it whether it still
-      // needs to run printer setup, without exposing what other apps on this machine are doing.
+      // `GET /printer-targets` always returns the CALLER'S OWN configuration, whoever they are.
+      // Asking for everything on the machine is an explicit `?scope=all`, admin only.
+      //
+      // It used to switch shape based on who asked — own-scope for an app, all-configurations for
+      // admin — which meant an SDK holding an admin key silently received a response it couldn't
+      // read and reported "target not configured" for a target that printed perfectly well. A
+      // response that changes shape by identity is a trap; the caller states what it wants instead.
       if (req.method === 'GET' && pathname === '/printer-targets') {
         const context = assertAuthenticated(req, auth, adminKey());
-        if (context.isAdmin) {
+        if (url.searchParams.get('scope') === 'all') {
+          assertAdmin(context);
           handleListAllTargets(res, printerTargets);
         } else {
           handleGetOwnTargets(res, printerTargets, context);
