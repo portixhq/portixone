@@ -65,7 +65,21 @@ export interface JobRecord {
 
 export interface RuntimeStatus {
   status: 'online';
+  /**
+   * @deprecated Ambiguous: this has always carried the PROTOCOL version, not the Runtime's own.
+   * Anything showing a version to a human wants `runtimeVersion`; anything negotiating the wire
+   * contract wants `protocolVersion`. Kept as-is so existing SDK callers don't break.
+   */
   version: string;
+  /**
+   * The installed Runtime's product version (`APP_VERSION`) — the number in `runtime-v0.1.1`, what
+   * the updater compares, and the only version a human should ever be shown. Reporting the protocol
+   * version instead made the dashboard read "v0.2.0" on a 0.1.1 Runtime, so nobody running a pilot
+   * could tell which build they were actually on.
+   */
+  runtimeVersion: string;
+  /** The wire-contract version (`PROTOCOL_VERSION`) — what SDK and Runtime negotiate on, not a product version. */
+  protocolVersion: string;
   defaultPrinter?: string;
   /** True when the Runtime's printer driver is `mock` — jobs are accepted and tracked but never reach real hardware. */
   simulated: boolean;
