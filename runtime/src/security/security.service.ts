@@ -10,7 +10,11 @@ import { API_KEY_HEADER } from '@portixone/protocol';
 export class SecurityService {
   applyCorsHeaders(res: ServerResponse): void {
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+    // PUT and DELETE are here because a real integrator's browser app configures printer targets
+    // (PUT /printer-targets/...) and removes them (DELETE) cross-origin through the SDK. Their
+    // absence blocked exactly that: the browser's preflight rejected the method, the fetch failed,
+    // and setup() reported the Runtime as unreachable. The same-origin dashboard never hit it.
+    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', `Content-Type, ${API_KEY_HEADER}`);
     // Chrome's Private Network Access requires this on the preflight when the
     // calling page was loaded from a public origin (e.g. portix.one) and the

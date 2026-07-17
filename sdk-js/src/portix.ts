@@ -1,6 +1,7 @@
 import { PROTOCOL_VERSION } from '@portixone/protocol';
 import { ClientAdapter, RuntimeUnreachableError } from './client.adapter.js';
 import { buildConnectionState, isProtocolCompatible } from './connection-state.js';
+import { PortixSetup } from './setup.js';
 import { PortixEventBus } from './event-bus.js';
 import { RuntimeSocket } from './runtime-socket.js';
 import { renderMockReceipt } from './mock-preview.js';
@@ -258,6 +259,47 @@ export class Portix {
   /** What this Runtime supports — populated by `connect()`. Undefined until then, or on an older Runtime. */
   getCapabilities(): RuntimeCapabilities | undefined {
     return this.capabilities;
+  }
+
+  /**
+   * The embeddable printer-setup flow for a logical target.
+   *
+   * Returns a headless state machine so an application can build "Configure printer" in its own
+   * settings screen — detect, pair, choose a printer, print a test, confirm — without writing any of
+   * that logic itself. The application renders `setup.getState()` and calls its actions; the SDK owns
+   * the sequence. See PortixSetup.
+   */
+  createSetup(options: { target: PrintTarget }): PortixSetup {
+    // Required up front, so the failure is "setup needs an appId" here rather than a confusing error
+    // three actions deep when the first target write happens.
+    this.requireAppId('createSetup');
+
+    // Read and write MUST use the same scope, or setup lies: it would write a mapping the caller's
+    // own prints never resolve. The runtime scopes a target by the CALLER'S identity, which is the
+    // pairing's appId for a paired app but the admin appId for an apiKey caller — not necessarily
+    // options.appId. So discover the scope appId from the own-scope read and configure THAT, which
+    // is exactly the identity this client prints as.
+    let scopeAppId = this.options.appId!;
+    return new PortixSetup({
+      target: options.target,
+      downloadUrl: DOWNLOAD_URL,
+      connect: () => this.connect({ expectTarget: options.target }),
+      listPrinters: () => this.listPrinters(),
+      getTargetMapping: async (target) => {
+        const view = await this.getPrinterTargets();
+        scopeAppId = view.appId;
+        return view.targets[target];
+      },
+      assignPrinter: async (target, printerName) => {
+        await this.requireAdapter().assignPrinterTarget(scopeAppId, target, printerName);
+      },
+      sendTest: async (target) => {
+        await this.requireAdapter().testPrinterTarget(scopeAppId, target);
+      },
+      confirmVerified: async (target) => {
+        await this.requireAdapter().confirmPrinterTarget(scopeAppId, target);
+      },
+    });
   }
 
   /** A cheap authenticated call, used only to answer "does our current credential actually work?" */
